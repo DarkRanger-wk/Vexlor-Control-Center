@@ -7,7 +7,7 @@ import { pipeline } from 'node:stream/promises'
 import { app, shell } from 'electron'
 import type { UpdateInfo } from '../../src/types/app'
 
-const repositoryPattern = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/
+const updateRepository = 'DarkRanger-wk/Vexlor-Control-Center'
 const installerDownloads = new Map<string, { url: string; name: string }>()
 const maxInstallerBytes = 500 * 1024 * 1024
 
@@ -26,16 +26,21 @@ function isNewer(latest: string, current: string): boolean {
   return false
 }
 
-function isValidRepository(repository: string): boolean {
-  if (!repositoryPattern.test(repository)) return false
-  const project = repository.split('/')[1]
-  return project !== '.' && project !== '..'
+async function* readResponseBody(body: ReadableStream<Uint8Array>): AsyncGenerator<Uint8Array> {
+  const reader = body.getReader()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) return
+      yield value
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }
 
-export async function checkLatestRelease(repository: string): Promise<UpdateInfo> {
-  if (!isValidRepository(repository)) throw new Error('Bitte ein GitHub-Repository im Format Besitzer/Projekt angeben.')
-
-  const response = await fetch(`https://api.github.com/repos/${repository}/releases/latest`, {
+export async function checkLatestRelease(): Promise<UpdateInfo> {
+  const response = await fetch(`https://api.github.com/repos/${updateRepository}/releases/latest`, {
     headers: {
       Accept: 'application/vnd.github+json',
       'User-Agent': 'Vexlor-Control-Center',
@@ -57,7 +62,7 @@ export async function checkLatestRelease(repository: string): Promise<UpdateInfo
   }
 
   const releaseUrl = new URL(data.html_url)
-  if (releaseUrl.origin !== 'https://github.com' || releaseUrl.pathname.split('/').slice(1, 3).join('/').toLowerCase() !== repository.toLowerCase()) {
+  if (releaseUrl.origin !== 'https://github.com' || releaseUrl.pathname.split('/').slice(1, 3).join('/').toLowerCase() !== updateRepository.toLowerCase()) {
     throw new Error('GitHub hat eine unerwartete Release-Adresse zurückgegeben.')
   }
 
@@ -78,14 +83,14 @@ export async function checkLatestRelease(repository: string): Promise<UpdateInfo
       const segments = installerUrl.pathname.split('/').filter(Boolean)
       if (
         installerUrl.origin === 'https://github.com'
-        && segments.slice(0, 2).join('/').toLowerCase() === repository.toLowerCase()
+        && segments.slice(0, 2).join('/').toLowerCase() === updateRepository.toLowerCase()
         && segments[2] === 'releases'
         && segments[3] === 'download'
         && segments[4] === data.tag_name
         && segments.length >= 6
       ) {
         installer = { url: installerUrl.href, name: candidate.name }
-        installerDownloads.set(`${repository}#${data.tag_name}`, installer)
+        installerDownloads.set(data.tag_name, installer)
       }
     }
   }
@@ -103,9 +108,10 @@ export async function checkLatestRelease(repository: string): Promise<UpdateInfo
   }
 }
 
-export async function downloadLatestInstaller(repository: string, tag: string): Promise<void> {
-  if (!isValidRepository(repository)) throw new Error('Ungültiges GitHub-Repository.')
-  const installer = installerDownloads.get(`${repository}#${tag}`)
+export async function downloadLatestInstaller(): Promise<UpdateInfo> {
+  const latest = await checkLatestRelease()
+  if (!latest.updateAvailable || !latest.latestVersion || !latest.downloadUrl) return latest
+  const installer = installerDownloads.get(latest.latestVersion)
   if (!installer) throw new Error('Für dieses Release wurde noch kein Windows-Installer geprüft.')
 
   const response = await fetch(installer.url, {
@@ -140,7 +146,7 @@ export async function downloadLatestInstaller(repository: string, tag: string): 
 
   try {
     await pipeline(
-      Readable.fromWeb(response.body),
+      Readable.from(readResponseBody(response.body)),
       sizeGuard,
       createWriteStream(installerPath, { flags: 'wx' }),
     )
@@ -170,16 +176,17 @@ export async function downloadLatestInstaller(repository: string, tag: string): 
         resolve()
       })
     })
+    return latest
   } catch (error) {
     await rm(downloadDirectory, { recursive: true, force: true })
     throw error
   }
 }
 
-export async function openGitHubRelease(repository: string, tag: string): Promise<void> {
-  if (!isValidRepository(repository) || !/^v?\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(tag)) {
+export async function openGitHubRelease(tag: string): Promise<void> {
+  if (!/^v?\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(tag)) {
     throw new Error('Ungültige Release-Adresse.')
   }
 
-  await shell.openExternal(`https://github.com/${repository}/releases/tag/${encodeURIComponent(tag)}`)
+  await shell.openExternal(`https://github.com/${updateRepository}/releases/tag/${encodeURIComponent(tag)}`)
 }

@@ -17,7 +17,6 @@ const defaultSettings: AppSettings = {
   backgroundData: null,
   notifications: true,
   launchAtLogin: false,
-  githubRepository: '',
   autoCheckUpdates: true,
 }
 
@@ -45,9 +44,12 @@ function readData(): LocalData {
     throw new Error('Die lokale VCC-Datendatei ist unvollständig oder beschädigt.')
   }
 
+  const savedSettings = { ...value.settings }
+  delete (savedSettings as Partial<AppSettings> & { githubRepository?: unknown }).githubRepository
+
   return {
     games: value.games as GameEntry[],
-    settings: { ...defaultSettings, ...value.settings },
+    settings: { ...defaultSettings, ...savedSettings },
     notes: value.notes,
   }
 }

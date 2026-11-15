@@ -1,0 +1,79 @@
+name: Build and publish release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync with latest main
+        shell: pwsh
+        run: |
+          git fetch origin main --tags
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch main.' }
+          git reset --hard origin/main
+          if ($LASTEXITCODE -ne 0) { throw 'Could not sync with main.' }
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Increment patch version
+        id: version
+        shell: pwsh
+        run: |
+          npm version patch --no-git-tag-version
+          if ($LASTEXITCODE -ne 0) { throw 'Could not increment package version.' }
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build Windows installer
+        run: npm run dist
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Commit version and create tag
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name "github-actions[bot]"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not configure git author.' }
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not configure git email.' }
+          git add package.json package-lock.json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not stage version files.' }
+          git commit -m "chore: release v${{ steps.version.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not commit the release version.' }
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Vexlor Control Center v${{ steps.version.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create the release tag.' }
+          git push origin "HEAD:${{ github.ref_name }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push the release commit.' }
+          git push origin "refs/tags/v${{ steps.version.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push the release tag.' }
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v${{ steps.version.outputs.version }}" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --verify-tag --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --generate-notes

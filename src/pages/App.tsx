@@ -17,14 +17,13 @@ const defaultSettings: AppSettings = {
   backgroundData: null,
   notifications: true,
   launchAtLogin: false,
-  githubRepository: '',
   autoCheckUpdates: true,
 }
 
 export default function App() {
   const [page, setPage] = useState('Dashboard')
   const [settings, setSettings] = useState(defaultSettings)
-  const [availableUpdate, setAvailableUpdate] = useState<{ repository: string; tag: string; hasInstaller: boolean } | null>(null)
+  const [availableUpdate, setAvailableUpdate] = useState<{ tag: string; hasInstaller: boolean } | null>(null)
   const [installingUpdate, setInstallingUpdate] = useState(false)
   const [checkingUpdates, setCheckingUpdates] = useState(false)
   const [toast, setToast] = useState<{ message: string; kind: 'error' | 'info' } | null>(null)
@@ -45,18 +44,20 @@ export default function App() {
   }, [notifyError])
 
   useEffect(() => {
-    if (!settings.autoCheckUpdates || !settings.githubRepository) return
+    if (!settings.autoCheckUpdates) return
     let active = true
     const checkForUpdates = async () => {
       if (active) setCheckingUpdates(true)
       try {
-        const update = await window.vcc.checkUpdates(settings.githubRepository)
+        const update = await window.vcc.checkUpdates()
         if (!active) return
         if (update.updateAvailable && update.latestVersion) {
-          setAvailableUpdate({ repository: settings.githubRepository, tag: update.latestVersion, hasInstaller: Boolean(update.downloadUrl) })
+          setAvailableUpdate({ tag: update.latestVersion, hasInstaller: Boolean(update.downloadUrl) })
           if (settings.notifications && notifiedUpdateTag.current !== update.latestVersion) {
             notifiedUpdateTag.current = update.latestVersion
-            notifyInfo(`Version ${update.latestVersion} ist verfügbar und kann oben rechts installiert werden.`)
+            notifyInfo(update.downloadUrl
+              ? `Version ${update.latestVersion} ist verfügbar und kann oben rechts installiert werden.`
+              : `Version ${update.latestVersion} ist verfügbar. Der Release enthält keinen Installer.`)
           }
         } else {
           setAvailableUpdate(null)
@@ -74,7 +75,7 @@ export default function App() {
       active = false
       window.clearInterval(interval)
     }
-  }, [settings.autoCheckUpdates, settings.githubRepository, settings.notifications, notifyError, notifyInfo])
+  }, [settings.autoCheckUpdates, settings.notifications, notifyError, notifyInfo])
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme
@@ -88,7 +89,6 @@ export default function App() {
     try {
       const saved = await window.vcc.saveSettings(patch)
       setSettings(saved)
-      if (patch.githubRepository !== undefined) setAvailableUpdate(null)
       setToast(null)
       return true
     } catch (error) {
@@ -103,20 +103,23 @@ export default function App() {
   }
 
   const downloadUpdate = async () => {
-    if (!availableUpdate) return
-    if (!availableUpdate.hasInstaller) {
-      try {
-        await window.vcc.openRelease(availableUpdate.repository, availableUpdate.tag)
-      } catch (error) {
-        notifyError(error instanceof Error ? error.message : 'Release konnte nicht geöffnet werden.')
-      }
-      return
-    }
-
+    if (checkingUpdates || installingUpdate) return
     setInstallingUpdate(true)
-    setToast({ message: `Version ${availableUpdate.tag} wird heruntergeladen und installiert. Deine lokalen Daten bleiben erhalten.`, kind: 'info' })
+    setToast({ message: 'Das neueste Release wird geprüft. Ein verfügbares Update wird direkt installiert.', kind: 'info' })
     try {
-      await window.vcc.downloadUpdate(availableUpdate.repository, availableUpdate.tag)
+      const update = await window.vcc.downloadUpdate()
+      if (!update.updateAvailable || !update.latestVersion) {
+        setAvailableUpdate(null)
+        notifyInfo('VCC ist auf dem neuesten Stand.')
+        return
+      }
+
+      const tag = update.latestVersion
+      setAvailableUpdate({ tag, hasInstaller: Boolean(update.downloadUrl) })
+      if (!update.downloadUrl) {
+        await window.vcc.openRelease(tag)
+        notifyInfo(`Version ${tag} ist verfügbar. Die Release-Seite wurde geöffnet.`)
+      }
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Update konnte nicht installiert werden.')
     } finally {
@@ -128,34 +131,6 @@ export default function App() {
     window.vcc[action]().catch((error: unknown) => {
       notifyError(error instanceof Error ? error.message : 'Fensteraktion konnte nicht ausgeführt werden.')
     })
-  }
-
-  const checkForUpdates = async () => {
-    if (checkingUpdates) return
-    const repository = settings.githubRepository.trim()
-    if (!repository) {
-      setPage('Einstellungen')
-      setToast({ message: 'Hinterlege zuerst dein GitHub-Repository unter Einstellungen → Updates.', kind: 'info' })
-      return
-    }
-
-    setCheckingUpdates(true)
-    try {
-      const update = await window.vcc.checkUpdates(repository)
-      if (update.updateAvailable && update.latestVersion) {
-        setAvailableUpdate({ repository, tag: update.latestVersion, hasInstaller: Boolean(update.downloadUrl) })
-        notifyInfo(update.downloadUrl
-          ? `Version ${update.latestVersion} ist verfügbar und kann oben installiert werden.`
-          : `Version ${update.latestVersion} ist verfügbar. Der Release enthält keinen Installer.`)
-      } else {
-        setAvailableUpdate(null)
-        notifyInfo('VCC ist auf dem neuesten Stand.')
-      }
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : 'Updateprüfung fehlgeschlagen.')
-    } finally {
-      setCheckingUpdates(false)
-    }
   }
 
   let pageContent
@@ -182,7 +157,7 @@ export default function App() {
       pageContent = <CustomizationPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} onNavigate={selectPage} />
       break
     case 'Einstellungen':
-      pageContent = <SettingsPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} onNavigate={selectPage} onUpdateChecked={(update, repository) => setAvailableUpdate(update.updateAvailable && update.latestVersion ? { repository, tag: update.latestVersion, hasInstaller: Boolean(update.downloadUrl) } : null)} />
+      pageContent = <SettingsPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} onNavigate={selectPage} onUpdateChecked={(update) => setAvailableUpdate(update.updateAvailable && update.latestVersion ? { tag: update.latestVersion, hasInstaller: Boolean(update.downloadUrl) } : null)} />
       break
     case 'Über Vexlor':
       pageContent = <AboutPage onNavigate={selectPage} />
@@ -202,8 +177,8 @@ export default function App() {
       <header className="topbar">
         <div className="breadcrumb"><span>VEXLOR</span><b>/</b><strong>{page}</strong></div>
         <div className="topbar-right">{availableUpdate
-          ? <button className="topbar-update-button" disabled={installingUpdate} onClick={() => void downloadUpdate()} aria-live="polite"><Icon name="refresh" /> {installingUpdate ? 'Update wird installiert …' : availableUpdate.hasInstaller ? 'Update installieren' : 'Release ansehen'} <span>{availableUpdate.tag}</span></button>
-          : <button className="topbar-update-button update-check-button" disabled={checkingUpdates} onClick={() => void checkForUpdates()}><Icon name="refresh" /> {checkingUpdates ? 'Suche Updates …' : 'Updates suchen'}</button>}
+          ? <button className="topbar-update-button" disabled={installingUpdate || checkingUpdates} onClick={() => void downloadUpdate()} aria-live="polite"><Icon name="refresh" /> {installingUpdate ? 'Prüfe & installiere …' : availableUpdate.hasInstaller ? 'Update installieren' : 'Release ansehen'} <span>{availableUpdate.tag}</span></button>
+          : <button className="topbar-update-button update-check-button" disabled={checkingUpdates || installingUpdate} onClick={() => void downloadUpdate()}><Icon name="refresh" /> {checkingUpdates ? 'Prüfe Updates …' : installingUpdate ? 'Update wird installiert …' : 'Updates suchen & installieren'}</button>}
           <div className="live-indicator"><span /> LOKAL AKTIV</div><span className="topbar-divider" /><span className="topbar-version">VCC <b>{packageJson.version}</b></span></div>
         <div className="window-controls" aria-label="Fenstersteuerung">
           <button onClick={() => controlWindow('minimizeWindow')} aria-label="Minimieren" title="Minimieren"><Icon name="minimize" /></button>

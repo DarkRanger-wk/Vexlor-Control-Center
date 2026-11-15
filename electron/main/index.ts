@@ -12,7 +12,6 @@ import { checkLatestRelease, downloadLatestInstaller, openGitHubRelease } from '
 const colorPattern = /^#[\da-fA-F]{6}$/
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
 const maxImageBytes = 5 * 1024 * 1024
-const repoPattern = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/
 
 function register(
   channel: string,
@@ -58,7 +57,7 @@ function validateGame(value: unknown): GameEntry {
 
 function validateSettings(value: unknown): Partial<AppSettings> {
   assertRecord(value)
-  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'notifications', 'githubRepository', 'autoCheckUpdates'])
+  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'notifications', 'autoCheckUpdates'])
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) throw new Error(`Unbekannte Einstellung: ${key}.`)
   }
@@ -88,12 +87,6 @@ function validateSettings(value: unknown): Partial<AppSettings> {
       throw new Error('Das Hintergrundbild muss ein lokales Bild unter 5 MB sein.')
     }
     settings.backgroundData = image as string | null
-  }
-  if ('githubRepository' in value) {
-    if (typeof value.githubRepository !== 'string' || (value.githubRepository !== '' && !repoPattern.test(value.githubRepository))) {
-      throw new Error('Das GitHub-Repository muss das Format Besitzer/Projekt haben.')
-    }
-    settings.githubRepository = value.githubRepository
   }
   return settings
 }
@@ -195,22 +188,18 @@ function registerIpcHandlers(): void {
     assertString(value.notes, 'Notizen', 50000)
     localStorage.saveNotes(value.notes)
   })
-  register('updates:check', async (value) => {
-    assertRecord(value)
-    assertString(value.repository, 'Repository', 200)
-    return checkLatestRelease(value.repository)
+  register('updates:check', (...args) => {
+    assertNoArgs(args)
+    return checkLatestRelease()
   })
   register('updates:open-release', async (value) => {
     assertRecord(value)
-    assertString(value.repository, 'Repository', 200)
     assertString(value.tag, 'Release-Version', 100)
-    return openGitHubRelease(value.repository, value.tag)
+    return openGitHubRelease(value.tag)
   })
-  register('updates:download-installer', async (value) => {
-    assertRecord(value)
-    assertString(value.repository, 'Repository', 200)
-    assertString(value.tag, 'Release-Version', 100)
-    return downloadLatestInstaller(value.repository, value.tag)
+  register('updates:download-installer', (...args) => {
+    assertNoArgs(args)
+    return downloadLatestInstaller()
   })
   register('external:open-email', async (...args) => {
     assertNoArgs(args)

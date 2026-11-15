@@ -17,7 +17,6 @@ export interface AppSettings {
   backgroundData: string | null
   notifications: boolean
   launchAtLogin: boolean
-  githubRepository: string
   autoCheckUpdates: boolean
 }
 
@@ -94,9 +93,9 @@ export interface VccApi {
   resetLocalData(): Promise<void>
   getNotes(): Promise<string>
   saveNotes(notes: string): Promise<void>
-  checkUpdates(repository: string): Promise<UpdateInfo>
-  openRelease(repository: string, tag: string): Promise<void>
-  downloadUpdate(repository: string, tag: string): Promise<void>
+  checkUpdates(): Promise<UpdateInfo>
+  openRelease(tag: string): Promise<void>
+  downloadUpdate(): Promise<UpdateInfo>
   openEmail(): Promise<void>
   minimizeWindow(): Promise<void>
   toggleMaximizeWindow(): Promise<void>

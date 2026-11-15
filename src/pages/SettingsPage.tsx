@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import packageJson from '../../package.json'
 import { Icon } from '../components/Icon'
 import type { AppSettings, UpdateInfo } from '../types/app'
@@ -10,7 +10,7 @@ interface PageProps {
   notifyError: (message: string) => void
   notifyInfo: (message: string) => void
   onNavigate: (page: string) => void
-  onUpdateChecked?: (update: UpdateInfo, repository: string) => void
+  onUpdateChecked?: (update: UpdateInfo) => void
 }
 
 export function CustomizationPage({ settings, updateSettings, notifyError }: PageProps) {
@@ -44,21 +44,17 @@ export function CustomizationPage({ settings, updateSettings, notifyError }: Pag
 }
 
 export function SettingsPage({ settings, updateSettings, notifyError, notifyInfo, onNavigate, onUpdateChecked }: PageProps) {
-  const [repository, setRepository] = useState(settings.githubRepository)
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [checking, setChecking] = useState(false)
   const [downloading, setDownloading] = useState(false)
-
-  useEffect(() => setRepository(settings.githubRepository), [settings.githubRepository])
 
   const checkUpdates = async () => {
     setChecking(true)
     setUpdateInfo(null)
     try {
-      if (!await updateSettings({ githubRepository: repository.trim() })) return
-      const result = await window.vcc.checkUpdates(repository.trim())
+      const result = await window.vcc.checkUpdates()
       setUpdateInfo(result)
-      onUpdateChecked?.(result, repository.trim())
+      onUpdateChecked?.(result)
       if (settings.notifications && result.updateAvailable) notifyInfo(`Version ${result.latestVersion} ist auf GitHub verfügbar.`)
       else if (!result.updateAvailable) notifyInfo('VCC ist auf dem neuesten veröffentlichten Stand.')
     } catch (error) {
@@ -71,18 +67,25 @@ export function SettingsPage({ settings, updateSettings, notifyError, notifyInfo
   const openRelease = async () => {
     if (!updateInfo?.latestVersion) return
     try {
-      await window.vcc.openRelease(repository.trim(), updateInfo.latestVersion)
+      await window.vcc.openRelease(updateInfo.latestVersion)
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Release-Seite konnte nicht geöffnet werden.')
     }
   }
 
   const downloadInstaller = async () => {
-    if (!updateInfo?.latestVersion || !updateInfo.downloadUrl) return
     setDownloading(true)
-    notifyInfo(`Version ${updateInfo.latestVersion} wird heruntergeladen. Deine lokalen Daten bleiben erhalten.`)
+    notifyInfo('Das neueste Update wird geprüft und bei Verfügbarkeit installiert.')
     try {
-      await window.vcc.downloadUpdate(repository.trim(), updateInfo.latestVersion)
+      const result = await window.vcc.downloadUpdate()
+      setUpdateInfo(result)
+      onUpdateChecked?.(result)
+      if (!result.updateAvailable) {
+        notifyInfo('VCC ist auf dem neuesten Stand.')
+      } else if (result.latestVersion && !result.downloadUrl) {
+        await window.vcc.openRelease(result.latestVersion)
+        notifyInfo(`Version ${result.latestVersion} ist verfügbar. Die Release-Seite wurde geöffnet.`)
+      }
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Update konnte nicht installiert werden.')
     } finally {
@@ -113,11 +116,10 @@ export function SettingsPage({ settings, updateSettings, notifyError, notifyInfo
     <PageIntro eyebrow="APP KONFIGURATION" title="Einstellungen" description="Allgemeine App-Optionen, Updates, Datenschutz und rechtliche Informationen." />
     <div className="settings-layout">
       <div className="settings-main">
-        <section className="settings-card panel" id="allgemein"><SettingHeading icon="settings" title="Allgemein" description="Grundlegende Einstellungen für Vexlor Control Center." /><div className="setting-row"><div><strong>Sprache</strong><small>Deutsch (Standard) · Englisch ist für eine spätere Version vorgesehen.</small></div><span className="setting-value">DEUTSCH</span></div><SettingSwitch title="Automatisch nach Updates suchen" description="Beim App-Start und danach alle 6 Stunden das konfigurierte GitHub-Repository abfragen." checked={settings.autoCheckUpdates} onChange={(value) => void updateSettings({ autoCheckUpdates: value })} /><SettingSwitch title="In-App-Updatehinweise" description="Hinweis in der App, wenn ein neueres Release gefunden wird." checked={settings.notifications} onChange={(value) => void updateSettings({ notifications: value })} /><SettingSwitch title="Mit Windows starten" description="VCC bei der Windows-Anmeldung öffnen." checked={settings.launchAtLogin} onChange={(value) => void setAutostart(value)} /></section>
+        <section className="settings-card panel" id="allgemein"><SettingHeading icon="settings" title="Allgemein" description="Grundlegende Einstellungen für Vexlor Control Center." /><div className="setting-row"><div><strong>Sprache</strong><small>Deutsch (Standard) · Englisch ist für eine spätere Version vorgesehen.</small></div><span className="setting-value">DEUTSCH</span></div><SettingSwitch title="Automatisch nach Updates suchen" description="Beim App-Start und danach alle 6 Stunden nach VCC-Releases suchen." checked={settings.autoCheckUpdates} onChange={(value) => void updateSettings({ autoCheckUpdates: value })} /><SettingSwitch title="In-App-Updatehinweise" description="Hinweis in der App, wenn ein neueres Release gefunden wird." checked={settings.notifications} onChange={(value) => void updateSettings({ notifications: value })} /><SettingSwitch title="Mit Windows starten" description="VCC bei der Windows-Anmeldung öffnen." checked={settings.launchAtLogin} onChange={(value) => void setAutostart(value)} /></section>
 
         <section className="settings-card panel" id="updates">
-          <SettingHeading icon="refresh" title="Updates" description={`Installierte Version ${updateInfo?.currentVersion ?? packageJson.version} · Prüfung beim Start, alle 6 Stunden oder manuell.`} />
-          <label className="form-label">GitHub-Repository im Format Besitzer/Projekt<input value={repository} onChange={(event) => setRepository(event.target.value)} maxLength={200} placeholder="besitzer/projekt" /></label>
+          <SettingHeading icon="refresh" title="Updates" description={`Installierte Version ${updateInfo?.currentVersion ?? packageJson.version} · Quelle: DarkRanger-wk/Vexlor-Control-Center.`} />
           <div className="setting-actions">
             <button className="primary-button" disabled={checking || downloading} onClick={() => void checkUpdates()}>{checking ? 'Prüfe GitHub …' : 'Nach Updates suchen'}</button>
             {updateInfo?.updateAvailable && updateInfo.downloadUrl && <button className="primary-button" disabled={downloading} onClick={() => void downloadInstaller()}>{downloading ? 'Update wird installiert …' : 'Update installieren'}</button>}
@@ -137,7 +139,7 @@ export function SettingsPage({ settings, updateSettings, notifyError, notifyInfo
           </div>}
         </section>
 
-        <section className="settings-card panel" id="datenschutz"><SettingHeading icon="network" title="Datenschutz & lokale Daten" description="Transparenz über tatsächlich verwendete Daten." /><div className="privacy-summary"><p>Spieleinträge (Name, Beschreibung, Kategorie, ausführbarer Dateipfad, Cover, Favorit und letzter Start), Notizen und Einstellungen werden lokal in einer JSON-Datei im Electron-Benutzerordner gespeichert. Systemwerte wie Prozessnamen, CPU-/RAM-Nutzung, Festplatten, Adapterzähler und lokale IPv4-Adressen werden zur Laufzeit lokal gelesen und nicht dauerhaft gespeichert.</p><p>Beim manuellen Updatecheck oder bei aktivierter automatischer Updateprüfung beim App-Start wird die angegebene Repository-Adresse an die GitHub-API übermittelt. GitHub erhält dabei übliche Verbindungsmetadaten, etwa die IP-Adresse. Ein Installer wird erst nach deinem Klick heruntergeladen und still in den bestehenden App-Ordner installiert; lokale Nutzerdaten werden beim Update beibehalten. Es gibt keine Telemetrie oder Diagnosedatenübermittlung.</p><p>Lokale Daten bleiben bis zur Löschung in der App oder manuellen Entfernung erhalten. Deinstallation kann Benutzerdatenordner unberührt lassen; prüfe diese bei Bedarf separat.</p></div><div className="setting-actions"><button className="subtle-button" onClick={() => onNavigate('Datenschutzerklärung')}>Datenschutzerklärung lesen</button><button className="danger-button" onClick={() => void resetData()}>Alle lokalen App-Daten löschen</button></div></section>
+        <section className="settings-card panel" id="datenschutz"><SettingHeading icon="network" title="Datenschutz & lokale Daten" description="Transparenz über tatsächlich verwendete Daten." /><div className="privacy-summary"><p>Spieleinträge (Name, Beschreibung, Kategorie, ausführbarer Dateipfad, Cover, Favorit und letzter Start), Notizen und Einstellungen werden lokal in einer JSON-Datei im Electron-Benutzerordner gespeichert. Systemwerte wie Prozessnamen, CPU-/RAM-Nutzung, Festplatten, Adapterzähler und lokale IPv4-Adressen werden zur Laufzeit lokal gelesen und nicht dauerhaft gespeichert.</p><p>Beim manuellen Updatecheck oder bei aktivierter automatischer Updateprüfung fragt VCC die GitHub-Releases-API für DarkRanger-wk/Vexlor-Control-Center ab. GitHub erhält dabei übliche Verbindungsmetadaten, etwa die IP-Adresse. Ein Installer wird erst nach deinem Klick heruntergeladen und still in den bestehenden App-Ordner installiert; lokale Nutzerdaten werden beim Update beibehalten. Es gibt keine Telemetrie oder Diagnosedatenübermittlung.</p><p>Lokale Daten bleiben bis zur Löschung in der App oder manuellen Entfernung erhalten. Deinstallation kann Benutzerdatenordner unberührt lassen; prüfe diese bei Bedarf separat.</p></div><div className="setting-actions"><button className="subtle-button" onClick={() => onNavigate('Datenschutzerklärung')}>Datenschutzerklärung lesen</button><button className="danger-button" onClick={() => void resetData()}>Alle lokalen App-Daten löschen</button></div></section>
 
         <section className="settings-card panel" id="ueber"><SettingHeading icon="spark" title="Über Vexlor Control Center" description={`VCC · Version ${packageJson.version} · Windows-Desktop-Anwendung.`} /><p className="about-copy">Dein lokales Control Center für Systemübersicht, Spiele und Gaming-Werkzeuge.</p><div className="legal-link-row"><button onClick={() => onNavigate('Impressum')}>Impressum <Icon name="arrow" /></button><button onClick={() => onNavigate('Datenschutzerklärung')}>Datenschutzerklärung <Icon name="arrow" /></button><button onClick={() => onNavigate('Nutzungsbedingungen')}>Nutzungsbedingungen <Icon name="arrow" /></button></div><button className="text-button contact-button" onClick={() => void window.vcc.openEmail()}>Kontakt: kontakt.noah224@gmail.com <Icon name="arrow" /></button></section>
       </div>
@@ -185,9 +187,9 @@ function PrivacyNotice() {
     <h2>Datenschutzerklärung</h2>
     <p className="legal-updated">Stand: November 2026 · Diese Beschreibung bezieht sich auf den Funktionsumfang von VCC {packageJson.version}.</p>
     <h3>Verantwortlicher und Kontakt</h3><p>Verantwortlich für diese Anwendung ist Noah Scheider, Vexlor Control Center. Datenschutzfragen können per E-Mail an <button className="inline-link" onClick={() => void window.vcc.openEmail()}>kontakt.noah224@gmail.com</button> gerichtet werden.</p>
-    <h3>Lokal gespeicherte Daten</h3><p>Spieleinträge (Name, Beschreibung, Kategorie, Pfad zur ausführbaren Datei, optionales Cover, Favoritenstatus und letzter Start), Gaming-Notizen sowie Einstellungen wie Theme, Akzentfarbe, lokales Hintergrundbild, Autostart-Präferenz und GitHub-Repository werden als JSON-Datei im Electron-Benutzerordner dieses Windows-Kontos gespeichert. Cover und Hintergrundbilder liegen als Bilddaten in dieser Datei. Die Anwendung benötigt dafür keinen Benutzeraccount.</p>
+    <h3>Lokal gespeicherte Daten</h3><p>Spieleinträge (Name, Beschreibung, Kategorie, Pfad zur ausführbaren Datei, optionales Cover, Favoritenstatus und letzter Start), Gaming-Notizen sowie Einstellungen wie Theme, Akzentfarbe, lokales Hintergrundbild, Autostart-Präferenz und Updateprüfung werden als JSON-Datei im Electron-Benutzerordner dieses Windows-Kontos gespeichert. Cover und Hintergrundbilder liegen als Bilddaten in dieser Datei. Die Anwendung benötigt dafür keinen Benutzeraccount.</p>
     <h3>Systeminformationen</h3><p>Zur Anzeige liest die Anwendung lokal Prozessnamen, Prozess-IDs und CPU-/RAM-Nutzung, CPU-Modell und -Auslastung, Arbeitsspeicher, erkannte Grafikadapter, Festplattenkapazitäten, Betriebssystemversion, aktive Netzwerkadapter, Adapterzähler und lokale IPv4-Adressen. Die Messwerte werden im Arbeitsspeicher verarbeitet und nicht in die Datendatei geschrieben. Temperaturwerte werden nicht ausgelesen. Prozesse werden nicht beendet.</p>
-    <h3>Externe Dienste und Updates</h3><p>Es gibt keine Telemetrie und keine Diagnosedatenübertragung. Eine Updateprüfung erfolgt nur, wenn du „Nach Updates suchen“ auswählst oder die automatische Updateprüfung beim App-Start und im 6-Stunden-Intervall aktivierst. VCC fragt dann die GitHub-Releases-API für die von dir angegebene Repository-Adresse ab. Dabei werden Repository und übliche Verbindungsdaten wie IP-Adresse an GitHub übermittelt; die Datenschutzhinweise von GitHub gelten für diesen Zugriff. Ein Installer wird erst nach deinem Klick geladen und still in die bestehende Installation eingespielt. Die lokalen App-Daten bleiben beim Update erhalten. QR-Codes werden lokal generiert.</p>
+    <h3>Externe Dienste und Updates</h3><p>Es gibt keine Telemetrie und keine Diagnosedatenübertragung. Eine Updateprüfung erfolgt, wenn du „Updates suchen & installieren“ auswählst oder – sofern aktiviert – automatisch beim App-Start und alle 6 Stunden. VCC fragt dafür die GitHub-Releases-API des öffentlichen Repositorys DarkRanger-wk/Vexlor-Control-Center ab. Dabei werden übliche Verbindungsdaten wie die IP-Adresse an GitHub übermittelt; die Datenschutzhinweise von GitHub gelten für diesen Zugriff. Ein Installer wird erst nach deinem Klick heruntergeladen und still in die bestehende Installation eingespielt. Die lokalen App-Daten bleiben beim Update erhalten. QR-Codes werden lokal generiert.</p>
     <h3>Speicherdauer und deine Möglichkeiten</h3><p>Lokale App-Daten bleiben bis zur Nutzung von „Alle lokalen App-Daten löschen“ oder bis zu einer manuellen Entfernung erhalten. Eine Deinstallation muss den Benutzerdatenordner nicht entfernen. Du kannst Spielpfade und Notizen in der App ändern, Spieleinträge löschen oder alle App-Daten über die Einstellungen zurücksetzen. Die eigentlichen Spiele-Dateien werden dadurch nicht verschoben oder gelöscht.</p>
     <h3>Kontakt</h3><p>Bei Datenschutzfragen: <button className="inline-link" onClick={() => void window.vcc.openEmail()}>kontakt.noah224@gmail.com</button>.</p>
   </div>
@@ -201,7 +203,7 @@ function TermsNotice() {
     <h3>Verantwortungsvolle Nutzung</h3><p>Prüfe ausgewählte ausführbare Dateien vor dem Start. VCC verlangt keine Administratorrechte und beendet keine Prozesse oder ändert keine Windows-Registry-Einstellungen. Vermeide Eingaben oder Aktionen, die die Sicherheit oder Verfügbarkeit deines Geräts beeinträchtigen.</p>
     <h3>Urheberrechte und geistiges Eigentum</h3><p>Rechte an der Anwendung und ihren Bestandteilen verbleiben bei den jeweiligen Rechteinhabern. Für selbst hinzugefügte Spiele, Beschreibungen und Cover bist du selbst verantwortlich; du musst über die erforderlichen Nutzungsrechte verfügen.</p>
     <h3>Verfügbarkeit und Einschränkungen</h3><p>Die Anwendung wird mit dem derzeitigen Funktionsumfang bereitgestellt. Systemdaten hängen von Windows, Hardware und verfügbaren Schnittstellen ab und können fehlen oder abweichen. Temperaturwerte und GPU-Auslastung werden derzeit nicht bereitgestellt. Eine ununterbrochene oder fehlerfreie Verfügbarkeit wird nicht zugesichert.</p>
-    <h3>Updates und Änderungen</h3><p>VCC kann Updates nach deiner Anfrage oder – wenn du diese Option aktivierst – beim App-Start und im 6-Stunden-Intervall gegen ein angegebenes öffentliches GitHub-Repository prüfen. Ein Klick auf „Update installieren“ lädt den angehängten Windows-Installer und installiert ihn still im vorhandenen App-Ordner, ohne den Setup-Assistenten erneut zu öffnen. Gespeicherte Spiele, Einstellungen und Notizen bleiben erhalten. Gibt es keinen Installer, wird die Release-Seite geöffnet.</p>
+    <h3>Updates und Änderungen</h3><p>VCC prüft über den Button oder – wenn aktiviert – beim App-Start und alle 6 Stunden das öffentliche GitHub-Repository DarkRanger-wk/Vexlor-Control-Center. Ein Klick auf „Update installieren“ prüft erneut das neueste Release und installiert den Windows-Installer still im vorhandenen App-Ordner. Gespeicherte Spiele, Einstellungen und Notizen bleiben erhalten. Gibt es keinen Installer, wird die Release-Seite geöffnet.</p>
     <h3>Online-Funktionen</h3><p>Ohne Internet funktionieren lokale Ansichten, Spieleinträge und Gaming-Werkzeuge. Nur die manuelle Updateprüfung und das Öffnen externer Links benötigen eine Verbindung. Für Inhalte und Verfügbarkeit externer Dienste ist deren jeweiliger Anbieter zuständig.</p>
     <h3>Haftung</h3><p>Diese Hinweise beschränken keine Haftung, soweit eine Beschränkung gesetzlich unzulässig ist. Die Anwendung liefert Informationen ohne Garantie für Vollständigkeit oder Eignung für einen bestimmten Zweck. Bewahre wichtige Daten unabhängig von der Anwendung auf.</p>
     <h3>Änderungen und Kontakt</h3><p>Diese Nutzungsbedingungen können zusammen mit der Anwendung aktualisiert werden. Fragen: <button className="inline-link" onClick={() => void window.vcc.openEmail()}>kontakt.noah224@gmail.com</button>.</p>
