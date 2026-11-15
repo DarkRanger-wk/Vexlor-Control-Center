@@ -1,0 +1,66 @@
+{
+  "name": "vexlor-control-center",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Vexlor Control Center – Gaming- und Systemübersicht für Windows",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "test": "node --experimental-strip-types --test src/services/calculator.test.ts",
+    "dist": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "electron": "^45.3.2",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "build": {
+    "appId": "de.vexlor.controlcenter",
+    "productName": "Vexlor Control Center",
+    "compression": "normal",
+    "artifactName": "Vexlor-Control-Center-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "assets/icons/vexlor.ico",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/icons/vexlor.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "overrides": {
+    "minimatch": "^11.0.8"
+  }
+}

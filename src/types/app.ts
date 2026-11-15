@@ -1,0 +1,104 @@
+export interface GameEntry {
+  id: string
+  name: string
+  description: string
+  category: string
+  executablePath: string
+  coverData: string | null
+  favorite: boolean
+  lastLaunchedAt: string | null
+}
+
+export interface AppSettings {
+  accent: string
+  theme: 'navy' | 'midnight' | 'graphite'
+  animations: boolean
+  compactSidebar: boolean
+  backgroundData: string | null
+  notifications: boolean
+  launchAtLogin: boolean
+  githubRepository: string
+  autoCheckUpdates: boolean
+}
+
+export interface ProcessEntry {
+  pid: number
+  name: string
+  cpuPercent: number | null
+  memoryBytes: number
+}
+
+export interface DiskInfo {
+  mount: string
+  totalBytes: number
+  freeBytes: number
+}
+
+export interface SystemSnapshot {
+  cpu: {
+    model: string
+    logicalCores: number
+    usagePercent: number | null
+  }
+  memory: {
+    totalBytes: number
+    usedBytes: number
+    usagePercent: number | null
+  }
+  gpus: string[]
+  operatingSystem: {
+    name: string
+    version: string
+    architecture: string
+  }
+  disks: DiskInfo[]
+  sampledAt: string
+  appVersion: string
+}
+
+export interface NetworkSnapshot {
+  connected: boolean
+  adapterName: string | null
+  connectionType: string | null
+  localAddresses: string[]
+  downloadBytesPerSecond: number | null
+  uploadBytesPerSecond: number | null
+  sampledAt: string
+}
+
+export interface UpdateInfo {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+  releaseUrl: string | null
+  downloadUrl: string | null
+  installerName: string | null
+  notes: string
+  publishedAt: string | null
+}
+
+export interface VccApi {
+  getSystemSnapshot(): Promise<SystemSnapshot>
+  listProcesses(): Promise<ProcessEntry[]>
+  getNetworkSnapshot(): Promise<NetworkSnapshot>
+  listGames(): Promise<GameEntry[]>
+  saveGame(game: Omit<GameEntry, 'lastLaunchedAt'> & { lastLaunchedAt?: string | null }): Promise<GameEntry[]>
+  removeGame(id: string): Promise<GameEntry[]>
+  launchGame(id: string): Promise<void>
+  chooseExecutable(): Promise<string | null>
+  chooseCover(): Promise<string | null>
+  chooseBackground(): Promise<string | null>
+  getSettings(): Promise<AppSettings>
+  saveSettings(settings: Partial<AppSettings>): Promise<AppSettings>
+  setAutostart(enabled: boolean): Promise<AppSettings>
+  resetLocalData(): Promise<void>
+  getNotes(): Promise<string>
+  saveNotes(notes: string): Promise<void>
+  checkUpdates(repository: string): Promise<UpdateInfo>
+  openRelease(repository: string, tag: string): Promise<void>
+  downloadUpdate(repository: string, tag: string): Promise<void>
+  openEmail(): Promise<void>
+  minimizeWindow(): Promise<void>
+  toggleMaximizeWindow(): Promise<void>
+  closeWindow(): Promise<void>
+}
