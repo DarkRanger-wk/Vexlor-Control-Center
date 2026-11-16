@@ -1,6 +1,6 @@
 {
   "name": "vexlor-control-center",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Vexlor Control Center – Gaming- und Systemübersicht für Windows",
   "main": "./out/main/index.js",
