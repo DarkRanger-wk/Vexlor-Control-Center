@@ -163,11 +163,12 @@ export async function downloadLatestInstaller(): Promise<UpdateInfo> {
     }
 
     await new Promise<void>((resolve, reject) => {
-      const installerProcess = spawn(installerPath, ['/S'], {
+      const installDirectory = dirname(process.execPath)
+      const installerProcess = spawn(installerPath, ['/S', `/D=${installDirectory}`], {
         detached: true,
         stdio: 'ignore',
         windowsHide: true,
-        cwd: dirname(process.execPath),
+        cwd: installDirectory,
       })
       installerProcess.once('error', reject)
       installerProcess.once('spawn', () => {

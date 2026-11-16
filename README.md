@@ -36,3 +36,5 @@ Games, notes and settings are stored in `vcc-data.json` inside Electron's per-us
 ## Update setup
 
 Every push to `main` builds the Windows NSIS installer, increments the patch version and publishes a new GitHub Release. GitHub Actions must have permission to write repository contents.
+
+The in-app updater installs into the directory of the currently running executable. This keeps the executable path stable for existing taskbar pins; settings and other local data remain in the per-user application data folder.
