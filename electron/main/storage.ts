@@ -18,6 +18,7 @@ const defaultSettings: AppSettings = {
   notifications: true,
   launchAtLogin: false,
   autoCheckUpdates: true,
+  screenshotShortcut: 'Super+Shift+S',
 }
 
 const emptyData = (): LocalData => ({

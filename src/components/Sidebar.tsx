@@ -13,6 +13,7 @@ const navigation: { label: string; icon: IconName }[] = [
   { label: 'Performance', icon: 'performance' },
   { label: 'Network Center', icon: 'network' },
   { label: 'Gaming Tools', icon: 'tools' },
+  { label: 'Screenshot Tool', icon: 'screenshot' },
 ]
 
 const preferences: { label: string; icon: IconName }[] = [

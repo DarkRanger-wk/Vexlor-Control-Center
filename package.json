@@ -8,7 +8,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "test": "node --experimental-strip-types --test src/services/calculator.test.ts",
+    "test": "node --experimental-strip-types --test src/services/calculator.test.ts src/services/screenshot.test.ts",
     "dist": "npm run build && electron-builder --win --publish never"
   },
   "dependencies": {

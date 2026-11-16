@@ -1,0 +1,83 @@
+* { box-sizing: border-box; }
+
+html, body, #overlay-root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { background: #080d18; }
+
+.screenshot-overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #080d18;
+  background-position: center;
+  background-size: 100% 100%;
+  cursor: crosshair;
+  user-select: none;
+  touch-action: none;
+}
+
+.screenshot-overlay-shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 7, 14, .56);
+  pointer-events: none;
+}
+
+.screenshot-overlay-selection {
+  position: absolute;
+  z-index: 1;
+  border: 1px solid #61b6ff;
+  outline: 1px solid rgba(4, 12, 24, .8);
+  background: rgba(54, 146, 255, .16);
+  box-shadow: 0 0 0 1px rgba(109, 191, 255, .45), 0 0 24px rgba(54, 146, 255, .25);
+  pointer-events: none;
+}
+
+.screenshot-overlay-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 24px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 15px;
+  border: 1px solid rgba(115, 160, 219, .28);
+  border-radius: 12px;
+  background: rgba(9, 17, 30, .94);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+  color: #e7f1ff;
+  font: 12px 'Segoe UI', sans-serif;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.screenshot-overlay-mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(81, 162, 255, .48);
+  border-radius: 9px;
+  background: rgba(45, 122, 224, .2);
+  color: #82c7ff;
+  font-weight: 700;
+}
+
+.screenshot-overlay-toolbar > span:nth-child(2) { display: flex; flex-direction: column; gap: 4px; }
+.screenshot-overlay-toolbar strong { font-weight: 600; }
+.screenshot-overlay-toolbar small { color: #96a9c2; font-size: 10px; }
+.screenshot-overlay-toolbar kbd { margin-left: 9px; padding: 4px 6px; border: 1px solid rgba(151, 174, 207, .24); border-radius: 5px; background: rgba(255, 255, 255, .06); color: #b6c8df; font: 10px 'Segoe UI', sans-serif; }
+
+.screenshot-overlay-size {
+  position: absolute;
+  z-index: 2;
+  padding: 5px 7px;
+  border: 1px solid rgba(92, 161, 240, .28);
+  border-radius: 5px;
+  background: rgba(9, 17, 30, .94);
+  color: #d7eaff;
+  font: 11px 'Segoe UI', sans-serif;
+  pointer-events: none;
+}

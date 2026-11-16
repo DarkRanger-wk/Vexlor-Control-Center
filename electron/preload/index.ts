@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { VccApi } from '../../src/types/app'
+import type { TimerWidgetAction, VccApi } from '../../src/types/app'
 
 const vccApi: VccApi = {
   getSystemSnapshot: () => ipcRenderer.invoke('system:get-snapshot'),
@@ -21,6 +21,31 @@ const vccApi: VccApi = {
   checkUpdates: () => ipcRenderer.invoke('updates:check'),
   openRelease: (tag) => ipcRenderer.invoke('updates:open-release', { tag }),
   downloadUpdate: () => ipcRenderer.invoke('updates:download-installer'),
+  listScreenshotDisplays: () => ipcRenderer.invoke('screenshot:list-displays'),
+  listScreenshotWindows: () => ipcRenderer.invoke('screenshot:list-windows'),
+  captureScreenshotDisplay: (displayId) => ipcRenderer.invoke('screenshot:capture-display', { displayId }),
+  captureScreenshotWindow: (sourceId) => ipcRenderer.invoke('screenshot:capture-window', { sourceId }),
+  captureScreenshotRegion: () => ipcRenderer.invoke('screenshot:capture-region'),
+  saveScreenshot: (imageDataUrl) => ipcRenderer.invoke('screenshot:save', { imageDataUrl }),
+  copyScreenshot: (imageDataUrl) => ipcRenderer.invoke('screenshot:copy', { imageDataUrl }),
+  getScreenshotShortcut: () => ipcRenderer.invoke('screenshot:get-shortcut'),
+  setScreenshotShortcut: (shortcut) => ipcRenderer.invoke('screenshot:set-shortcut', { shortcut }),
+  onScreenshotCaptured: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, imageDataUrl: string) => callback(imageDataUrl)
+    ipcRenderer.on('screenshot:captured', listener)
+    return () => ipcRenderer.removeListener('screenshot:captured', listener)
+  },
+  onScreenshotError: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, message: string) => callback(message)
+    ipcRenderer.on('screenshot:error', listener)
+    return () => ipcRenderer.removeListener('screenshot:error', listener)
+  },
+  updateTimerWidget: (state) => ipcRenderer.invoke('timer-widget:update-state', state),
+  onTimerWidgetAction: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, action: TimerWidgetAction) => callback(action)
+    ipcRenderer.on('timer-widget:action', listener)
+    return () => ipcRenderer.removeListener('timer-widget:action', listener)
+  },
   openEmail: () => ipcRenderer.invoke('external:open-email'),
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   toggleMaximizeWindow: () => ipcRenderer.invoke('window:toggle-maximize'),

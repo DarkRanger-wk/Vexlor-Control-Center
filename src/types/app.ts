@@ -18,7 +18,40 @@ export interface AppSettings {
   notifications: boolean
   launchAtLogin: boolean
   autoCheckUpdates: boolean
+  screenshotShortcut: string
 }
+
+export interface ScreenshotDisplay {
+  id: string
+  label: string
+  primary: boolean
+}
+
+export interface ScreenshotWindow {
+  id: string
+  title: string
+  thumbnail: string
+}
+
+export interface ScreenshotShortcutStatus {
+  shortcut: string
+  registered: boolean
+}
+
+export interface TimerWidgetState {
+  timer: {
+    status: 'idle' | 'running' | 'paused' | 'completed'
+    remainingMs: number
+    deadline: number | null
+  }
+  stopwatch: {
+    running: boolean
+    elapsedMs: number
+    startedAt: number | null
+  }
+}
+
+export type TimerWidgetAction = 'open-app' | 'timer-toggle' | 'timer-reset' | 'stopwatch-toggle' | 'stopwatch-reset'
 
 export interface ProcessEntry {
   pid: number
@@ -96,6 +129,19 @@ export interface VccApi {
   checkUpdates(): Promise<UpdateInfo>
   openRelease(tag: string): Promise<void>
   downloadUpdate(): Promise<UpdateInfo>
+  listScreenshotDisplays(): Promise<ScreenshotDisplay[]>
+  listScreenshotWindows(): Promise<ScreenshotWindow[]>
+  captureScreenshotDisplay(displayId: string): Promise<string>
+  captureScreenshotWindow(sourceId: string): Promise<string>
+  captureScreenshotRegion(): Promise<string | null>
+  saveScreenshot(imageDataUrl: string): Promise<boolean>
+  copyScreenshot(imageDataUrl: string): Promise<void>
+  getScreenshotShortcut(): Promise<ScreenshotShortcutStatus>
+  setScreenshotShortcut(shortcut: string): Promise<ScreenshotShortcutStatus>
+  onScreenshotCaptured(callback: (imageDataUrl: string) => void): () => void
+  onScreenshotError(callback: (message: string) => void): () => void
+  updateTimerWidget(state: TimerWidgetState): Promise<void>
+  onTimerWidgetAction(callback: (action: TimerWidgetAction) => void): () => void
   openEmail(): Promise<void>
   minimizeWindow(): Promise<void>
   toggleMaximizeWindow(): Promise<void>

@@ -22,6 +22,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(projectRoot, 'electron/preload/index.ts'),
+          screenshot: resolve(projectRoot, 'electron/preload/screenshot.ts'),
+          timerWidget: resolve(projectRoot, 'electron/preload/timer-widget.ts'),
         },
       },
     },
@@ -33,6 +35,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(projectRoot, 'index.html'),
+          screenshotOverlay: resolve(projectRoot, 'screenshot-overlay.html'),
+          timerWidget: resolve(projectRoot, 'timer-widget.html'),
         },
       },
     },

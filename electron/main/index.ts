@@ -8,6 +8,22 @@ import { assertNoArgs, assertRecord, assertString, assertTrustedRenderer } from 
 import { readNetworkSnapshot, readProcessList, readSystemSnapshot } from './monitor'
 import { localStorage } from './storage'
 import { checkLatestRelease, downloadLatestInstaller, openGitHubRelease } from './updates'
+import {
+  captureScreenshotDisplay,
+  captureScreenshotRegion,
+  captureScreenshotWindow,
+  copyScreenshot,
+  getScreenshotShortcut,
+  initializeScreenshotShortcut,
+  isValidScreenshotShortcut,
+  listScreenshotDisplays,
+  listScreenshotWindows,
+  registerScreenshotOverlayEvents,
+  saveScreenshot,
+  setScreenshotMainWindow,
+  setScreenshotShortcut,
+} from './screenshots'
+import { registerTimerWidgetEvents, setTimerWidgetMainWindow, updateTimerWidgetState } from './timer-widget'
 
 const colorPattern = /^#[\da-fA-F]{6}$/
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
@@ -57,7 +73,7 @@ function validateGame(value: unknown): GameEntry {
 
 function validateSettings(value: unknown): Partial<AppSettings> {
   assertRecord(value)
-  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'notifications', 'autoCheckUpdates'])
+  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'notifications', 'autoCheckUpdates', 'screenshotShortcut'])
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) throw new Error(`Unbekannte Einstellung: ${key}.`)
   }
@@ -76,10 +92,15 @@ function validateSettings(value: unknown): Partial<AppSettings> {
       if (typeof value[key] !== 'boolean') throw new Error(`Ungültige Einstellung: ${key}.`)
       settings[key] = value[key]
     }
-    if ('autoCheckUpdates' in value) {
-      if (typeof value.autoCheckUpdates !== 'boolean') throw new Error('Ungültige Einstellung: autoCheckUpdates.')
-      settings.autoCheckUpdates = value.autoCheckUpdates
-    }
+  }
+  if ('autoCheckUpdates' in value) {
+    if (typeof value.autoCheckUpdates !== 'boolean') throw new Error('Ungültige Einstellung: autoCheckUpdates.')
+    settings.autoCheckUpdates = value.autoCheckUpdates
+  }
+  if ('screenshotShortcut' in value) {
+    assertString(value.screenshotShortcut, 'Screenshot-Tastenkombination', 100)
+    if (!isValidScreenshotShortcut(value.screenshotShortcut)) throw new Error('Ungültige Screenshot-Tastenkombination.')
+    settings.screenshotShortcut = value.screenshotShortcut
   }
   if ('backgroundData' in value) {
     const image = value.backgroundData
@@ -201,6 +222,48 @@ function registerIpcHandlers(): void {
     assertNoArgs(args)
     return downloadLatestInstaller()
   })
+  register('screenshot:list-displays', (...args) => {
+    assertNoArgs(args)
+    return listScreenshotDisplays()
+  })
+  register('screenshot:list-windows', (...args) => {
+    assertNoArgs(args)
+    return listScreenshotWindows()
+  })
+  register('screenshot:capture-display', (value) => {
+    assertRecord(value)
+    assertString(value.displayId, 'Bildschirm-ID', 100)
+    return captureScreenshotDisplay(value.displayId)
+  })
+  register('screenshot:capture-window', (value) => {
+    assertRecord(value)
+    assertString(value.sourceId, 'Fenster-ID', 256)
+    return captureScreenshotWindow(value.sourceId)
+  })
+  register('screenshot:capture-region', (...args) => {
+    assertNoArgs(args)
+    return captureScreenshotRegion()
+  })
+  register('screenshot:save', (value) => {
+    assertRecord(value)
+    assertString(value.imageDataUrl, 'Screenshot', 120 * 1024 * 1024)
+    return saveScreenshot(value.imageDataUrl)
+  })
+  register('screenshot:copy', (value) => {
+    assertRecord(value)
+    assertString(value.imageDataUrl, 'Screenshot', 120 * 1024 * 1024)
+    return copyScreenshot(value.imageDataUrl)
+  })
+  register('screenshot:get-shortcut', (...args) => {
+    assertNoArgs(args)
+    return getScreenshotShortcut()
+  })
+  register('screenshot:set-shortcut', (value) => {
+    assertRecord(value)
+    assertString(value.shortcut, 'Screenshot-Tastenkombination', 100)
+    return setScreenshotShortcut(value.shortcut)
+  })
+  register('timer-widget:update-state', (value) => updateTimerWidgetState(value))
   register('external:open-email', async (...args) => {
     assertNoArgs(args)
     return shell.openExternal('mailto:kontakt.noah224@gmail.com')
@@ -242,8 +305,11 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false,
     },
   })
+  setScreenshotMainWindow(window)
+  setTimerWidgetMainWindow(window)
 
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event, destination) => {
@@ -262,7 +328,10 @@ function createWindow(): void {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   registerIpcHandlers()
+  registerScreenshotOverlayEvents()
+  registerTimerWidgetEvents()
   createWindow()
+  initializeScreenshotShortcut()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
