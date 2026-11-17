@@ -19,6 +19,7 @@ const defaultSettings: AppSettings = {
   notifications: true,
   launchAtLogin: false,
   autoCheckUpdates: true,
+  telemetryEnabled: false,
   screenshotShortcut: 'Super+Shift+S',
 }
 

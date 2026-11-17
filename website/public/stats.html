@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Nutzungsstatistiken von Vexlor Control Center." />
+    <title>Statistiken | Vexlor</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="/index.html" class="brand"><span class="brand-mark">V</span> <span>Vexlor</span></a>
+        <nav class="main-nav"><a href="/index.html">Start</a><a href="/features.html">Funktionen</a><a href="/download.html">Download</a><a href="/changelog.html">Changelog</a><a href="/stats.html">Statistiken</a><a href="/faq.html">FAQ</a></nav>
+        <div class="header-actions"><a class="button primary" href="/download.html">Download</a></div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <div class="container">
+        <div class="page-header">
+          <span class="eyebrow">Live-Statistiken</span>
+          <h1>Nutzungsübersicht</h1>
+        </div>
+        <p class="empty-state hidden" data-empty-stats>Es liegen noch keine Telemetriedaten vor. Nutzungsstatistiken erscheinen erst, wenn Nutzer die optionale Erfassung in der App aktivieren.</p>
+        <div class="stats-grid">
+          <article class="stat-card"><small>Gesamtinstallationen</small><div class="value" data-stat="totalInstallations">—</div></article>
+          <article class="stat-card"><small>Aktive Nutzer</small><div class="value" data-stat="activeUsers">—</div></article>
+          <article class="stat-card"><small>Aktuelle Nutzer</small><div class="value" data-stat="currentUsers">—</div></article>
+          <article class="stat-card"><small>Heute aktiv</small><div class="value" data-stat="usersToday">—</div></article>
+          <article class="stat-card"><small>Durchschnittliche Nutzung / Tag</small><div class="value" data-stat="avgDailyUsageMinutes">—</div></article>
+          <article class="stat-card"><small>Durchschnittliche Sitzung</small><div class="value" data-stat="avgSessionMinutes">—</div></article>
+          <article class="stat-card"><small>Erfasste Gesamtzeit</small><div class="value" data-stat="totalTrackedHours">—</div></article>
+          <article class="stat-card"><small>Letzte Aktualisierung</small><div class="value" data-last-updated style="font-size: 1rem; line-height: 1.5;">Noch keine Daten</div></article>
+        </div>
+        <section class="chart-panel" style="margin-top: 24px;">
+          <h2>Nutzungsverlauf</h2>
+          <div class="chart-periods" role="group" aria-label="Zeitraum auswählen">
+            <button type="button" data-period="day" aria-pressed="true">Tage</button>
+            <button type="button" data-period="week" aria-pressed="false">Wochen</button>
+            <button type="button" data-period="month" aria-pressed="false">Monate</button>
+          </div>
+          <p class="empty-state hidden" data-chart-empty>Für diesen Zeitraum liegen noch keine erfassten Sitzungen vor.</p>
+          <div class="usage-chart" data-usage-chart aria-label="Diagramm zur Sitzungsdauer"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-grid">
+        <div><div class="brand" style="margin-bottom: 14px;"><span class="brand-mark">V</span><span>Vexlor</span></div><p>Moderne Gaming- und Systemkontrolle für Windows.</p></div>
+        <div><h3>Navigation</h3><div class="footer-links"><a href="/features.html">Funktionen</a><a href="/download.html">Download</a><a href="/stats.html">Statistiken</a></div></div>
+        <div><h3>Ressourcen</h3><div class="footer-links"><a href="/faq.html">FAQ</a><a href="/changelog.html">Changelog</a><a href="/privacy.html">Datenschutz</a></div></div>
+        <div><h3>Recht</h3><div class="footer-links"><a href="/imprint.html">Impressum</a><a href="/terms.html">Nutzungsbedingungen</a></div></div>
+      </div>
+      <div class="container footer-legal-actions" aria-label="Rechtliche Informationen"><a class="button secondary" href="/imprint.html">Impressum</a><a class="button secondary" href="/privacy.html">Datenschutzerklärung</a><a class="button secondary" href="/terms.html">Nutzungsbedingungen</a></div>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

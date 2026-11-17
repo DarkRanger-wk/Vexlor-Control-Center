@@ -24,6 +24,7 @@ import {
   setScreenshotShortcut,
 } from './screenshots'
 import { registerTimerWidgetEvents, setTimerWidgetMainWindow, updateTimerWidgetState } from './timer-widget'
+import { registerTelemetryLifecycle, setTelemetryEnabled } from './telemetry'
 
 const colorPattern = /^#[\da-fA-F]{6}$/
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
@@ -73,7 +74,7 @@ function validateGame(value: unknown): GameEntry {
 
 function validateSettings(value: unknown): Partial<AppSettings> {
   assertRecord(value)
-  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'notifications', 'autoCheckUpdates', 'screenshotShortcut'])
+  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'notifications', 'autoCheckUpdates', 'telemetryEnabled', 'screenshotShortcut'])
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) throw new Error(`Unbekannte Einstellung: ${key}.`)
   }
@@ -93,9 +94,11 @@ function validateSettings(value: unknown): Partial<AppSettings> {
       settings[key] = value[key]
     }
   }
-  if ('autoCheckUpdates' in value) {
-    if (typeof value.autoCheckUpdates !== 'boolean') throw new Error('Ungültige Einstellung: autoCheckUpdates.')
-    settings.autoCheckUpdates = value.autoCheckUpdates
+  for (const key of ['autoCheckUpdates', 'telemetryEnabled'] as const) {
+    if (key in value) {
+      if (typeof value[key] !== 'boolean') throw new Error(`Ungültige Einstellung: ${key}.`)
+      settings[key] = value[key]
+    }
   }
   if ('screenshotShortcut' in value) {
     assertString(value.screenshotShortcut, 'Screenshot-Tastenkombination', 100)
@@ -188,7 +191,12 @@ function registerIpcHandlers(): void {
     assertNoArgs(args)
     return localStorage.getSettings()
   })
-  register('settings:save', (value) => localStorage.saveSettings(validateSettings(value)))
+  register('settings:save', (value) => {
+    const settings = validateSettings(value)
+    const savedSettings = localStorage.saveSettings(settings)
+    if ('telemetryEnabled' in settings) setTelemetryEnabled(savedSettings.telemetryEnabled)
+    return savedSettings
+  })
   register('settings:autostart', (value) => {
     assertRecord(value)
     if (typeof value.enabled !== 'boolean') throw new Error('Ungültige Autostart-Einstellung.')
@@ -198,6 +206,7 @@ function registerIpcHandlers(): void {
   register('settings:reset', (...args) => {
     assertNoArgs(args)
     app.setLoginItemSettings({ openAtLogin: false })
+    setTelemetryEnabled(false)
     localStorage.reset()
   })
   register('notes:get', (...args) => {
@@ -330,6 +339,7 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   registerScreenshotOverlayEvents()
   registerTimerWidgetEvents()
+  registerTelemetryLifecycle(localStorage.getSettings().telemetryEnabled)
   createWindow()
   initializeScreenshotShortcut()
 

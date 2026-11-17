@@ -18,6 +18,7 @@ export interface AppSettings {
   notifications: boolean
   launchAtLogin: boolean
   autoCheckUpdates: boolean
+  telemetryEnabled: boolean
   screenshotShortcut: string
 }
 
