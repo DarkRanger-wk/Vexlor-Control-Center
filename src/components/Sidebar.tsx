@@ -13,6 +13,7 @@ const navigation: { label: string; icon: IconName }[] = [
   { label: 'Performance', icon: 'performance' },
   { label: 'Network Center', icon: 'network' },
   { label: 'Gaming Tools', icon: 'tools' },
+  { label: 'Vexlor Arcade', icon: 'arcade' },
   { label: 'Screenshot Tool', icon: 'screenshot' },
 ]
 

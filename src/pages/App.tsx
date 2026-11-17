@@ -9,6 +9,7 @@ import { NetworkPage, PerformancePage, SystemMonitorPage } from './SystemPages'
 import { AboutPage, CustomizationPage, LegalPage, SettingsPage } from './SettingsPage'
 import { ToolsPage } from './ToolsPage'
 import { ScreenshotPage } from './ScreenshotPage'
+import ArcadePage from './ArcadePage.jsx'
 
 const defaultSettings: AppSettings = {
   accent: '#428bff',
@@ -270,6 +271,9 @@ export default function App() {
         onTimerChange={(timer) => setTimerWidgetState((current) => ({ ...current, timer }))}
         onStopwatchChange={(stopwatch) => setTimerWidgetState((current) => ({ ...current, stopwatch }))}
       />
+      break
+    case 'Vexlor Arcade':
+      pageContent = <ArcadePage />
       break
     case 'Screenshot Tool':
       pageContent = <ScreenshotPage initialImage={hotkeyScreenshot} notifyError={notifyError} notifyInfo={notifyInfo} />

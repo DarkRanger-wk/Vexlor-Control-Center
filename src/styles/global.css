@@ -39,6 +39,8 @@ button { color: inherit; }
 .sidebar {
   position: sticky;
   top: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex: 0 0 248px;
   flex-direction: column;

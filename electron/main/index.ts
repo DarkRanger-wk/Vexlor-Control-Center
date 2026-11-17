@@ -170,6 +170,11 @@ function registerIpcHandlers(): void {
     })
     localStorage.saveGame({ ...game, lastLaunchedAt: new Date().toISOString() })
   })
+  register('arcade:get-profile', (...args) => {
+    assertNoArgs(args)
+    return localStorage.getArcadeProfile()
+  })
+  register('arcade:save-profile', (value) => localStorage.saveArcadeProfile(value))
   register('library:choose-executable', async (...args) => {
     assertNoArgs(args)
     const result = await dialog.showOpenDialog({

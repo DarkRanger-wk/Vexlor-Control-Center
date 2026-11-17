@@ -9,6 +9,19 @@ export interface GameEntry {
   lastLaunchedAt: string | null
 }
 
+export type ArcadeGameId = 'space-shooter' | 'runner' | 'clicker' | 'puzzle'
+export type ArcadeAchievementId = 'first-flight' | 'score-500' | 'score-2000' | 'score-5000' | 'play-60'
+
+export interface ArcadeProfile {
+  highScore: number
+  lastScore: number | null
+  roundsPlayed: number
+  totalPlayTimeSeconds: number
+  achievements: ArcadeAchievementId[]
+  recentGames: ArcadeGameId[]
+  soundVolume: number
+}
+
 export interface AppSettings {
   accent: string
   theme: 'navy' | 'midnight' | 'graphite'
@@ -118,6 +131,8 @@ export interface VccApi {
   saveGame(game: Omit<GameEntry, 'lastLaunchedAt'> & { lastLaunchedAt?: string | null }): Promise<GameEntry[]>
   removeGame(id: string): Promise<GameEntry[]>
   launchGame(id: string): Promise<void>
+  getArcadeProfile(): Promise<ArcadeProfile>
+  saveArcadeProfile(profile: ArcadeProfile): Promise<ArcadeProfile>
   chooseExecutable(): Promise<string | null>
   chooseCover(): Promise<string | null>
   chooseBackground(): Promise<string | null>

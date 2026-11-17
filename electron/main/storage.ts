@@ -1,12 +1,13 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
-import type { AppSettings, GameEntry } from '../../src/types/app'
+import type { ArcadeProfile, AppSettings, GameEntry } from '../../src/types/app'
 
 interface LocalData {
   games: GameEntry[]
   settings: AppSettings
   notes: string
+  arcade: ArcadeProfile
 }
 
 const defaultSettings: AppSettings = {
@@ -26,7 +27,59 @@ const emptyData = (): LocalData => ({
   games: [],
   settings: { ...defaultSettings },
   notes: '',
+  arcade: emptyArcadeProfile(),
 })
+
+function emptyArcadeProfile(): ArcadeProfile {
+  return {
+    highScore: 0,
+    lastScore: null,
+    roundsPlayed: 0,
+    totalPlayTimeSeconds: 0,
+    achievements: [],
+    recentGames: [],
+    soundVolume: 0.35,
+  }
+}
+
+function validateArcadeProfile(value: unknown): ArcadeProfile {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error('Das Arcade-Profil hat ein ungültiges Format.')
+  }
+  const profile = value as Partial<ArcadeProfile>
+  const isCounter = (entry: unknown): entry is number => Number.isSafeInteger(entry) && (entry as number) >= 0
+  const achievementIds = new Set(['first-flight', 'score-500', 'score-2000', 'score-5000', 'play-60'])
+  const gameIds = new Set(['space-shooter', 'runner', 'clicker', 'puzzle'])
+
+  if (!isCounter(profile.highScore)
+    || (profile.lastScore !== null && !isCounter(profile.lastScore))
+    || !isCounter(profile.roundsPlayed)
+    || !isCounter(profile.totalPlayTimeSeconds)
+    || !Array.isArray(profile.achievements)
+    || !Array.isArray(profile.recentGames)
+    || typeof profile.soundVolume !== 'number'
+    || !Number.isFinite(profile.soundVolume)
+    || profile.soundVolume < 0
+    || profile.soundVolume > 1) {
+    throw new Error('Das Arcade-Profil enthält ungültige Werte.')
+  }
+  if (profile.achievements.some((id) => typeof id !== 'string' || !achievementIds.has(id))) {
+    throw new Error('Das Arcade-Profil enthält einen unbekannten Erfolg.')
+  }
+  if (profile.recentGames.some((id) => typeof id !== 'string' || !gameIds.has(id))) {
+    throw new Error('Das Arcade-Profil enthält ein unbekanntes Spiel.')
+  }
+
+  return {
+    highScore: profile.highScore,
+    lastScore: profile.lastScore,
+    roundsPlayed: profile.roundsPlayed,
+    totalPlayTimeSeconds: profile.totalPlayTimeSeconds,
+    achievements: [...new Set(profile.achievements)],
+    recentGames: [...new Set(profile.recentGames)].slice(0, 8),
+    soundVolume: profile.soundVolume,
+  }
+}
 
 function dataPath(): string {
   return join(app.getPath('userData'), 'vcc-data.json')
@@ -53,6 +106,7 @@ function readData(): LocalData {
     games: value.games as GameEntry[],
     settings: { ...defaultSettings, ...savedSettings },
     notes: value.notes,
+    arcade: value.arcade === undefined ? emptyArcadeProfile() : validateArcadeProfile(value.arcade),
   }
 }
 
@@ -80,6 +134,15 @@ export const localStorage = {
     data.games = data.games.filter((game) => game.id !== id)
     writeData(data)
     return data.games
+  },
+
+  getArcadeProfile: () => readData().arcade,
+
+  saveArcadeProfile(profile: unknown): ArcadeProfile {
+    const data = readData()
+    data.arcade = validateArcadeProfile(profile)
+    writeData(data)
+    return data.arcade
   },
 
   getSettings: () => readData().settings,
