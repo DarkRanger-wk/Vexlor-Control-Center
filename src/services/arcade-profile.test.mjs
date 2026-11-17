@@ -7,6 +7,7 @@ import {
   completeArcadeRound,
   createArcadeProfile,
   loadArcadeProfile,
+  recordPuzzleProgress,
   saveArcadeProfile,
   validateArcadeProfile,
 } from './arcade-profile.mjs'
@@ -50,6 +51,41 @@ test('round results preserve the personal record and update lifetime statistics'
   assert.equal(timed.roundsPlayed, 2)
   assert.equal(timed.totalPlayTimeSeconds, 32)
   assert.ok(timed.achievements.includes('score-500'))
+})
+
+test('legacy profiles migrate and rounds update the selected game statistics', () => {
+  const legacy = {
+    highScore: 18,
+    lastScore: 18,
+    roundsPlayed: 1,
+    totalPlayTimeSeconds: 30,
+    achievements: ['first-flight'],
+    recentGames: ['space-shooter'],
+    soundVolume: 0.35,
+  }
+  const migrated = validateArcadeProfile(legacy)
+  assert.equal(migrated.runnerBestScore, 0)
+  assert.equal(migrated.clicker.energy, 0)
+  assert.equal(migrated.puzzle.board.length, 16)
+
+  const runner = beginArcadeRound(migrated, 'runner')
+  const finishedRunner = completeArcadeRound(runner, 720, 5, 'runner')
+  assert.equal(finishedRunner.runnerBestScore, 720)
+  assert.equal(finishedRunner.highScore, 18)
+  assert.equal(finishedRunner.runnerRuns, 1)
+
+  const puzzleRound = beginArcadeRound(finishedRunner, 'puzzle')
+  const solved = recordPuzzleProgress(puzzleRound, {
+    board: [2048, ...Array(15).fill(0)],
+    score: 4096,
+    moves: 12,
+    won: true,
+    gameOver: false,
+    active: true,
+  })
+  assert.equal(solved.puzzle.bestTile, 2048)
+  assert.equal(solved.puzzle.wins, 1)
+  assert.equal(solved.puzzle.gamesPlayed, 1)
 })
 
 test('invalid profile values and corrupted saved data are reported', () => {

@@ -73,7 +73,18 @@ jobs:
           git push origin "refs/tags/v${{ steps.version.outputs.version }}"
           if ($LASTEXITCODE -ne 0) { throw 'Could not push the release tag.' }
 
-      - name: Publish GitHub release
+      - name: Deutsche GitHub-Veröffentlichung erstellen
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v${{ steps.version.outputs.version }}" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --verify-tag --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --generate-notes
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sourceCommit = '${{ github.sha }}'
+          $previousTag = git describe --tags --abbrev=0 $sourceCommit
+          if ($LASTEXITCODE -ne 0) { throw 'Das vorherige Versionskennzeichen konnte nicht ermittelt werden.' }
+          $changes = git log --no-merges --format='- %s' "$previousTag..$sourceCommit"
+          if ($LASTEXITCODE -ne 0) { throw 'Die Änderungen für die Versionshinweise konnten nicht ermittelt werden.' }
+          if (-not $changes) { $changes = '- Fehlerbehebungen und Verbesserungen' }
+          $notes = "Änderungen in Version ${{ steps.version.outputs.version }}:`n`n$changes"
+          gh release create "v${{ steps.version.outputs.version }}" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --verify-tag --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --notes "$notes"
+          if ($LASTEXITCODE -ne 0) { throw 'Die GitHub-Veröffentlichung ist fehlgeschlagen.' }

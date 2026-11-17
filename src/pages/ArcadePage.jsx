@@ -9,13 +9,14 @@ import {
   createArcadeProfile,
   validateArcadeProfile,
 } from '../services/arcade-profile.mjs'
+import { ClickerGame, PuzzleGame, RunnerGame } from './ArcadeMiniGames'
 import '../styles/arcade.css'
 
 const gameCatalog = [
-  { id: 'space-shooter', title: 'Vexlor Space Shooter', description: 'Weiche Gegnerwellen aus, sammle Upgrades und verteidige deinen Highscore.', status: 'PLAYABLE', color: 'blue' },
-  { id: 'runner', title: 'Vexlor Runner', description: 'Ein schneller Endless-Runner durch die Neonwelt von Vexlor.', status: 'IN ENTWICKLUNG', color: 'cyan' },
-  { id: 'clicker', title: 'Vexlor Clicker', description: 'Sammle Energie, schalte Upgrades frei und baue deinen Fortschritt aus.', status: 'IN ENTWICKLUNG', color: 'violet' },
-  { id: 'puzzle', title: 'Vexlor Puzzle', description: 'Knacke clevere Logikrätsel in mehreren Schwierigkeitsstufen.', status: 'IN ENTWICKLUNG', color: 'green' },
+  { id: 'space-shooter', title: 'Vexlor Space Shooter', description: 'Weiche Gegnerwellen aus, sammle Verbesserungen und verteidige deinen Punkterekord.', status: 'PLAYABLE', color: 'blue' },
+  { id: 'runner', title: 'Vexlor Runner', description: 'Springe und rutsche durch einen immer schnelleren Neon-Parcours.', status: 'PLAYABLE', color: 'cyan' },
+  { id: 'clicker', title: 'Vexlor Clicker', description: 'Sammle Energie, kaufe Verbesserungen und automatisiere deine Produktion.', status: 'PLAYABLE', color: 'violet' },
+  { id: 'puzzle', title: 'Vexlor Puzzle', description: 'Kombiniere Zahlenkacheln und knacke das 2048er-Logikrätsel.', status: 'PLAYABLE', color: 'green' },
 ]
 
 const keyMap = {
@@ -106,8 +107,8 @@ export default function ArcadePage() {
     })
   }, [])
 
-  const startRound = useCallback(() => {
-    persistProfile(beginArcadeRound(profileRef.current))
+  const startRound = useCallback((gameId = 'space-shooter') => {
+    persistProfile(beginArcadeRound(profileRef.current, gameId))
   }, [persistProfile])
 
   const recordTime = useCallback((seconds) => {
@@ -115,8 +116,14 @@ export default function ArcadePage() {
     persistProfile(addArcadePlayTime(profileRef.current, seconds))
   }, [persistProfile])
 
-  const finishRound = useCallback((score, unsavedSeconds) => {
-    persistProfile(completeArcadeRound(profileRef.current, score, unsavedSeconds))
+  const finishRound = useCallback((score, unsavedSeconds, gameId = 'space-shooter') => {
+    persistProfile(completeArcadeRound(profileRef.current, score, unsavedSeconds, gameId))
+  }, [persistProfile])
+
+  const updateProfile = useCallback((update) => {
+    const current = profileRef.current
+    const candidate = typeof update === 'function' ? update(current) : { ...current, ...update }
+    persistProfile(candidate)
   }, [persistProfile])
 
   const saveVolume = useCallback((nextVolume) => {
@@ -125,9 +132,18 @@ export default function ArcadePage() {
   }, [persistProfile])
 
   const resetProfile = () => {
-    if (!window.confirm('Arcade-Highscores, Spielzeit und Erfolge auf diesem PC zurücksetzen?')) return
+    if (!window.confirm('Arcade-Rekorde, Spielzeit und Erfolge auf diesem PC zurücksetzen?')) return
     persistProfile(createArcadeProfile())
     setVolume(0.35)
+  }
+
+  const miniGameProps = {
+    profile,
+    onBack: () => setView('hub'),
+    onStartRound: startRound,
+    onRecordTime: recordTime,
+    onFinishRound: finishRound,
+    onUpdate: updateProfile,
   }
 
   if (view === 'space-shooter') {
@@ -141,6 +157,9 @@ export default function ArcadePage() {
       onVolumeSave={() => saveVolume(volume)}
     />
   }
+  if (view === 'runner') return <RunnerGame {...miniGameProps} />
+  if (view === 'clicker') return <ClickerGame {...miniGameProps} />
+  if (view === 'puzzle') return <PuzzleGame {...miniGameProps} />
 
   const unlocked = new Set(profile.achievements)
   const recentGames = profile.recentGames.map((id) => gameCatalog.find((game) => game.id === id)).filter(Boolean)
@@ -152,7 +171,7 @@ export default function ArcadePage() {
         <h1>Dein nächstes <span>Level.</span></h1>
         <p className="welcome-subtitle">Kurze Pause, große Rekorde. Deine Spiele und Erfolge bleiben lokal auf diesem PC.</p>
       </div>
-      <div className="arcade-online-badge"><span /> OFFLINE BEREIT</div>
+      <div className="arcade-online-badge"><span /> OHNE INTERNET SPIELBAR</div>
     </header>
 
     {storageError && <div className="arcade-storage-error" role="alert">
@@ -162,7 +181,7 @@ export default function ArcadePage() {
     {!profileReady && <p className="arcade-loading" role="status">Lokales Arcade-Profil wird geladen …</p>}
 
     <section className="arcade-stats" aria-label="Deine Arcade-Statistik">
-      <StatCard label="PERSÖNLICHER HIGHSCORE" value={profile.highScore.toLocaleString('de-DE')} detail="Punkte · Space Shooter" icon="target" color="blue" />
+      <StatCard label="PERSÖNLICHER REKORD" value={profile.highScore.toLocaleString('de-DE')} detail="Punkte · Space Shooter" icon="target" color="blue" />
       <StatCard label="GESPIELTE ZEIT" value={formatDuration(profile.totalPlayTimeSeconds)} detail={`${profile.roundsPlayed} ${profile.roundsPlayed === 1 ? 'Runde' : 'Runden'} insgesamt`} icon="clock" color="cyan" />
       <StatCard label="ERFOLGE" value={`${profile.achievements.length} / ${ARCADE_ACHIEVEMENTS.length}`} detail="automatisch freigeschaltet" icon="crown" color="violet" />
     </section>
@@ -176,8 +195,8 @@ export default function ArcadePage() {
         {gameCatalog.map((game) => <GameCard
           key={game.id}
           game={game}
-          highScore={profile.highScore}
-          onPlay={profileReady ? () => setView('space-shooter') : undefined}
+          record={getGameRecord(game.id, profile)}
+          onPlay={profileReady ? () => setView(game.id) : undefined}
         />)}
       </div>
     </section>
@@ -191,10 +210,10 @@ export default function ArcadePage() {
         {recentGames.length
           ? <div className="arcade-recent-list">{recentGames.slice(0, 3).map((game) => <div className="arcade-recent-item" key={game.id}>
             <span className={`arcade-mini-icon ${game.color}`}><Icon name="arcade" /></span>
-            <span><strong>{game.title}</strong><small>{game.id === 'space-shooter' && profile.lastScore !== null ? `Letzte Runde · ${profile.lastScore.toLocaleString('de-DE')} Punkte` : 'Zuletzt gespielt'}</small></span>
-            <button type="button" aria-label={`${game.title} öffnen`} onClick={() => setView('space-shooter')}><Icon name="arrow" /></button>
+            <span><strong>{game.title}</strong><small>{getRecentDetail(game.id, profile)}</small></span>
+            <button type="button" aria-label={`${game.title} öffnen`} onClick={() => setView(game.id)}><Icon name="arrow" /></button>
           </div>)}</div>
-          : <div className="arcade-empty-recent"><span className="arcade-empty-symbol">✦</span><strong>Dein erster Run wartet.</strong><p>Starte den Space Shooter und dein letzter Spielstand erscheint hier.</p></div>}
+          : <div className="arcade-empty-recent"><span className="arcade-empty-symbol">✦</span><strong>Dein erstes Spiel wartet.</strong><p>Starte ein Arcade-Spiel und es erscheint hier.</p></div>}
       </section>
 
       <section className="arcade-panel achievements-panel">
@@ -222,23 +241,38 @@ function StatCard({ label, value, detail, icon, color }) {
   </article>
 }
 
-function GameCard({ game, highScore, onPlay }) {
-  const playable = game.id === 'space-shooter'
+function GameCard({ game, record, onPlay }) {
+  const playable = game.status === 'PLAYABLE'
   const readyToPlay = playable && typeof onPlay === 'function'
   return <article className={`arcade-game-card ${game.color}${playable ? ' playable' : ' upcoming'}`}>
     <div className="arcade-cover">
       <ArcadeArtwork gameId={game.id} />
-      <span className={`arcade-status${playable ? ' available' : ''}`}>{game.status}</span>
-      {playable && <span className="arcade-cover-score"><Icon name="performance" /> BEST {highScore.toLocaleString('de-DE')}</span>}
+      <span className={`arcade-status${playable ? ' available' : ''}`}>{playable ? 'JETZT SPIELBAR' : game.status}</span>
+      {playable && <span className="arcade-cover-score"><Icon name="performance" /> {record.label} {record.value}</span>}
     </div>
     <div className="arcade-card-copy">
-      <div className="arcade-card-title"><h3>{game.title}</h3>{playable && <span className="arcade-new-badge">JETZT SPIELEN</span>}</div>
+      <div className="arcade-card-title"><h3>{game.title}</h3>{playable && <span className="arcade-new-badge">SPIELBAR</span>}</div>
       <p>{game.description}</p>
       <button type="button" className={playable ? 'primary-button arcade-play-button' : 'arcade-upcoming-button'} onClick={readyToPlay ? onPlay : undefined} disabled={!readyToPlay}>
         {playable ? readyToPlay ? <>Spiel starten <Icon name="arrow" /></> : 'Profil wird geladen …' : <>Demnächst verfügbar <span>·</span></>}
       </button>
     </div>
   </article>
+}
+
+function getGameRecord(gameId, profile) {
+  if (gameId === 'space-shooter') return { label: 'REKORD', value: profile.highScore.toLocaleString('de-DE') }
+  if (gameId === 'runner') return { label: 'REKORD', value: profile.runnerBestScore.toLocaleString('de-DE') }
+  if (gameId === 'clicker') return { label: 'ENERGIE', value: profile.clicker.energy.toLocaleString('de-DE') }
+  return { label: 'REKORD', value: profile.puzzle.bestTile.toLocaleString('de-DE') }
+}
+
+function getRecentDetail(gameId, profile) {
+  if (gameId === 'space-shooter' && profile.lastScore !== null) return `Letzte Runde · ${profile.lastScore.toLocaleString('de-DE')} Punkte`
+  if (gameId === 'runner' && profile.runnerRuns > 0) return `Bestweite · ${profile.runnerBestScore.toLocaleString('de-DE')} Punkte`
+  if (gameId === 'clicker') return `${profile.clicker.energy.toLocaleString('de-DE')} Energie · ${profile.clicker.generators}/s`
+  if (gameId === 'puzzle') return `Bester Stein · ${profile.puzzle.bestTile.toLocaleString('de-DE')}`
+  return 'Zuletzt gespielt'
 }
 
 function ArcadeArtwork({ gameId }) {
@@ -580,7 +614,7 @@ function SpaceShooter({ volume, onBack, onStartRound, onRecordTime, onFinishRoun
           <h2>Bereit zum Abheben?</h2>
           <p>Weiche den Gegnern aus, sammle Power-ups und halte so lange durch wie du kannst.</p>
           <button type="button" className="primary-button" onClick={startRun}>Spiel starten <Icon name="arrow" /></button>
-          <span className="arcade-overlay-hint">ENTER zum Starten</span>
+          <span className="arcade-overlay-hint">EINGABETASTE ZUM STARTEN</span>
         </>}
         {phase === 'paused' && <>
           <div className="arcade-overlay-kicker">FLUG ANGEHALTEN</div>
@@ -590,9 +624,9 @@ function SpaceShooter({ volume, onBack, onStartRound, onRecordTime, onFinishRoun
         </>}
         {phase === 'gameover' && <>
           <div className="arcade-overlay-kicker">MISSION BEENDET</div>
-          <h2>Game Over</h2><p>Du hast <strong>{hud.score.toLocaleString('de-DE')}</strong> Punkte erreicht.</p>
+          <h2>Runde beendet</h2><p>Du hast <strong>{hud.score.toLocaleString('de-DE')}</strong> Punkte erreicht.</p>
           <button type="button" className="primary-button" onClick={startRun}>Nochmal spielen <Icon name="refresh" /></button>
-          <span className="arcade-overlay-hint">ENTER für eine neue Runde</span>
+          <span className="arcade-overlay-hint">EINGABETASTE FÜR EINE NEUE RUNDE</span>
         </>}
       </div>}
     </div>
@@ -751,10 +785,10 @@ function drawScene(context, game) {
     context.fillStyle = '#7890ad'
     context.font = '500 10px monospace'
     context.textAlign = 'left'
-    context.fillText('SCORE', 24, 21)
-    context.fillText('TIME', 230, 21)
-    context.fillText('SECTOR', 405, 21)
-    context.fillText('HULL', 595, 21)
+    context.fillText('PUNKTE', 24, 21)
+    context.fillText('ZEIT', 230, 21)
+    context.fillText('SEKTOR', 405, 21)
+    context.fillText('LEBEN', 595, 21)
     context.fillStyle = '#e9f4ff'
     context.font = '600 19px sans-serif'
     context.fillText(game.score.toLocaleString('de-DE'), 24, 43)

@@ -17,6 +17,26 @@ export interface ArcadeProfile {
   lastScore: number | null
   roundsPlayed: number
   totalPlayTimeSeconds: number
+  runnerBestScore: number
+  runnerRuns: number
+  clicker: {
+    energy: number
+    lifetimeEnergy: number
+    upgrades: number
+    generators: number
+  }
+  puzzle: {
+    board: number[]
+    score: number
+    bestScore: number
+    bestTile: number
+    gamesPlayed: number
+    wins: number
+    moves: number
+    won: boolean
+    gameOver: boolean
+    active: boolean
+  }
   achievements: ArcadeAchievementId[]
   recentGames: ArcadeGameId[]
   soundVolume: number
