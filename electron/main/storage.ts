@@ -20,7 +20,7 @@ const defaultSettings: AppSettings = {
   launchAtLogin: false,
   autoCheckUpdates: true,
   telemetryEnabled: false,
-  screenshotShortcut: 'Super+Shift+S',
+  screenshotShortcut: 'Ctrl+Shift+S',
 }
 
 const emptyData = (): LocalData => ({

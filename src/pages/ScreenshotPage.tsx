@@ -17,7 +17,7 @@ export function ScreenshotPage({ initialImage, notifyError, notifyInfo }: Screen
   const [selectedDisplay, setSelectedDisplay] = useState('')
   const [windows, setWindows] = useState<ScreenshotWindow[]>([])
   const [selectedWindow, setSelectedWindow] = useState('')
-  const [shortcut, setShortcut] = useState('Super+Shift+S')
+  const [shortcut, setShortcut] = useState('Ctrl+Shift+S')
   const [shortcutStatus, setShortcutStatus] = useState<ScreenshotShortcutStatus | null>(null)
   const [recordingShortcut, setRecordingShortcut] = useState(false)
   const [shortcutDirty, setShortcutDirty] = useState(false)

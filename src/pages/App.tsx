@@ -21,7 +21,7 @@ const defaultSettings: AppSettings = {
   launchAtLogin: false,
   autoCheckUpdates: true,
   telemetryEnabled: false,
-  screenshotShortcut: 'Super+Shift+S',
+  screenshotShortcut: 'Ctrl+Shift+S',
 }
 
 const idleTimerWidgetState: TimerWidgetState = {
@@ -75,7 +75,7 @@ export default function App() {
           setAvailableUpdate(null)
         }
       } catch (error) {
-        if (active) notifyError(error instanceof Error ? error.message : 'Automatische Updateprüfung fehlgeschlagen.')
+        if (active) console.warn('Automatische Updateprüfung fehlgeschlagen:', error)
       } finally {
         if (active) setCheckingUpdates(false)
       }

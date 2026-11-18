@@ -19,7 +19,7 @@ export function ToolsPage({ notifyError, onNavigate, timer, stopwatch, onTimerCh
     <PageIntro eyebrow="PRAKTISCHE EXTRAS" title="Gaming Tools" description="Kleine Werkzeuge für deine Gaming-Sessions – Berechnung, Zeit, Notizen und QR-Codes lokal auf deinem PC." />
     <div className="tools-grid">
       <CalculatorTool />
-      <TimerTool notifyError={notifyError} timer={timer} onChange={onTimerChange} />
+      <TimerTool timer={timer} onChange={onTimerChange} />
       <StopwatchTool stopwatch={stopwatch} onChange={onStopwatchChange} />
       <NotesTool notifyError={notifyError} />
       <QrTool notifyError={notifyError} />
@@ -47,16 +47,17 @@ function CalculatorTool() {
   return <section className="tool-card panel"><ToolHeading icon="cpu" kicker="RECHNER" title="Taschenrechner" /><form onSubmit={calculate}><label className="tool-input-label">Ausdruck<input aria-label="Mathematischer Ausdruck" value={expression} onChange={(event) => setExpression(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.form?.requestSubmit() }} placeholder="z. B. (120 + 45) / 3" /></label><button className="primary-button tool-submit">Berechnen</button></form>{error && <p className="tool-error" role="alert">{error}</p>}{result !== null && <div className="calculation-result"><span>ERGEBNIS</span><strong>{result}</strong></div>}<p className="tool-hint">Unterstützt + − × ÷, Dezimalzahlen und Klammern.</p></section>
 }
 
-function TimerTool({ notifyError, timer, onChange }: {
-  notifyError: (message: string) => void
+function TimerTool({ timer, onChange }: {
   timer: TimerWidgetState['timer']
   onChange: (timer: TimerWidgetState['timer']) => void
 }) {
   const [minutes, setMinutes] = useState('10')
   const [seconds, setSeconds] = useState('00')
+  const [error, setError] = useState('')
 
   const start = () => {
     if (timer.status === 'running' && timer.deadline !== null) {
+      setError('')
       const remainingMs = Math.max(0, timer.deadline - Date.now())
       onChange({
         status: remainingMs === 0 ? 'completed' : 'paused',
@@ -67,9 +68,10 @@ function TimerTool({ notifyError, timer, onChange }: {
     }
     const duration = timer.status === 'paused' ? timer.remainingMs : (Number(minutes) * 60 + Number(seconds)) * 1000
     if (!Number.isFinite(duration) || duration <= 0 || duration > 24 * 60 * 60 * 1000) {
-      notifyError('Bitte eine Timer-Dauer zwischen 1 Sekunde und 24 Stunden eingeben.')
+      setError('Bitte eine Timer-Dauer zwischen 1 Sekunde und 24 Stunden eingeben.')
       return
     }
+    setError('')
     onChange({ status: 'running', remainingMs: duration, deadline: Date.now() + duration })
   }
 
@@ -84,7 +86,7 @@ function TimerTool({ notifyError, timer, onChange }: {
         ? timer.remainingMs
         : (Number(minutes) * 60 + Number(seconds)) * 1000
   const clockText = formatDuration(clockValue)
-  return <section className="tool-card panel"><ToolHeading icon="refresh" kicker="SESSION-PLANUNG" title="Timer" /><div className={`tool-clock${running ? ' active' : ''}`}>{clockText}</div><div className="timer-fields"><label>Min<input type="number" min="0" max="1439" disabled={running || paused} value={minutes} onChange={(event) => setMinutes(event.target.value)} /></label><span>:</span><label>Sek<input type="number" min="0" max="59" disabled={running || paused} value={seconds} onChange={(event) => setSeconds(event.target.value)} /></label></div><div className="tool-button-row"><button className="primary-button" onClick={start}>{running ? 'Pausieren' : paused ? 'Fortsetzen' : completed ? 'Erneut starten' : 'Starten'}</button><button className="subtle-button" onClick={() => onChange({ status: 'idle', remainingMs: 0, deadline: null })}>Zurücksetzen</button></div><p className="tool-hint">{completed ? 'Timer abgelaufen.' : running ? 'Läuft auch bei geschlossenem Hauptfenster.' : 'Der Timer bleibt im schwebenden Fenster sichtbar.'}</p></section>
+  return <section className="tool-card panel"><ToolHeading icon="refresh" kicker="SESSION-PLANUNG" title="Timer" /><div className={`tool-clock${running ? ' active' : ''}`}>{clockText}</div><div className="timer-fields"><label>Min<input type="number" min="0" max="1439" disabled={running || paused} value={minutes} onChange={(event) => { setMinutes(event.target.value); setError('') }} /></label><span>:</span><label>Sek<input type="number" min="0" max="59" disabled={running || paused} value={seconds} onChange={(event) => { setSeconds(event.target.value); setError('') }} /></label></div><div className="tool-button-row"><button className="primary-button" onClick={start}>{running ? 'Pausieren' : paused ? 'Fortsetzen' : completed ? 'Erneut starten' : 'Starten'}</button><button className="subtle-button" onClick={() => { setError(''); onChange({ status: 'idle', remainingMs: 0, deadline: null }) }}>Zurücksetzen</button></div>{error && <p className="tool-error" role="alert">{error}</p>}<p className="tool-hint">{completed ? 'Timer abgelaufen.' : running ? 'Läuft auch bei geschlossenem Hauptfenster.' : 'Der Timer bleibt im schwebenden Fenster sichtbar.'}</p></section>
 }
 
 function StopwatchTool({ stopwatch, onChange }: {

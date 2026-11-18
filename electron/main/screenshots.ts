@@ -39,16 +39,20 @@ export function setScreenshotMainWindow(window: BrowserWindow): void {
 }
 
 export function initializeScreenshotShortcut(): ScreenshotShortcutStatus {
-  const shortcut = localStorage.getSettings().screenshotShortcut
+  let shortcut = localStorage.getSettings().screenshotShortcut
   if (!isValidScreenshotShortcut(shortcut)) return { shortcut, registered: false }
-  const registered = globalShortcut.register(shortcut, handleGlobalShortcut)
+  let registered = globalShortcut.register(shortcut, handleGlobalShortcut)
+  if (!registered && shortcut === 'Super+Shift+S') {
+    shortcut = 'Ctrl+Shift+S'
+    registered = globalShortcut.register(shortcut, handleGlobalShortcut)
+  }
   registeredShortcut = registered ? shortcut : null
   return { shortcut, registered }
 }
 
 export function getScreenshotShortcut(): ScreenshotShortcutStatus {
   return {
-    shortcut: localStorage.getSettings().screenshotShortcut,
+    shortcut: registeredShortcut ?? localStorage.getSettings().screenshotShortcut,
     registered: registeredShortcut !== null,
   }
 }

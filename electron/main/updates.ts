@@ -6,8 +6,10 @@ import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { app, shell } from 'electron'
 import type { UpdateInfo } from '../../src/types/app'
+import { parseGitHubReleaseFeed } from '../../src/services/github-release-feed'
 
 const updateRepository = 'DarkRanger-wk/Vexlor-Control-Center'
+const releaseFeedUrl = `https://github.com/${updateRepository}/releases.atom`
 const installerDownloads = new Map<string, { url: string; name: string }>()
 const maxInstallerBytes = 500 * 1024 * 1024
 
@@ -40,71 +42,38 @@ async function* readResponseBody(body: ReadableStream<Uint8Array>): AsyncGenerat
 }
 
 export async function checkLatestRelease(): Promise<UpdateInfo> {
-  const response = await fetch(`https://api.github.com/repos/${updateRepository}/releases/latest`, {
+  const response = await fetch(releaseFeedUrl, {
     headers: {
-      Accept: 'application/vnd.github+json',
+      Accept: 'application/atom+xml, application/xml',
       'User-Agent': 'Vexlor-Control-Center',
     },
     signal: AbortSignal.timeout(10000),
   })
 
-  if (response.status === 404) throw new Error('Für dieses Repository wurde kein veröffentlichtes GitHub-Release gefunden.')
   if (!response.ok) throw new Error(`GitHub konnte nicht abgefragt werden (HTTP ${response.status}).`)
 
-  const release: unknown = await response.json()
-  if (typeof release !== 'object' || release === null || Array.isArray(release)) {
-    throw new Error('GitHub hat keine gültigen Release-Informationen zurückgegeben.')
-  }
+  const [release] = parseGitHubReleaseFeed(await response.text())
+  if (!release) throw new Error('GitHub hat keine gültigen Release-Informationen zurückgegeben.')
 
-  const data = release as { tag_name?: unknown; html_url?: unknown; body?: unknown; published_at?: unknown; assets?: unknown }
-  if (typeof data.tag_name !== 'string' || typeof data.html_url !== 'string') {
-    throw new Error('Das GitHub-Release enthält keine gültige Version.')
-  }
-
-  const releaseUrl = new URL(data.html_url)
-  if (releaseUrl.origin !== 'https://github.com' || releaseUrl.pathname.split('/').slice(1, 3).join('/').toLowerCase() !== updateRepository.toLowerCase()) {
-    throw new Error('GitHub hat eine unerwartete Release-Adresse zurückgegeben.')
-  }
-
-  let installer: { url: string; name: string } | null = null
-  if (Array.isArray(data.assets)) {
-    const candidates = data.assets.filter((asset): asset is { name: string; browser_download_url: string } =>
-      typeof asset === 'object'
-      && asset !== null
-      && 'name' in asset
-      && typeof asset.name === 'string'
-      && asset.name.toLowerCase().endsWith('.exe')
-      && 'browser_download_url' in asset
-      && typeof asset.browser_download_url === 'string',
-    )
-    const candidate = candidates.find((asset) => /setup|installer/i.test(asset.name)) ?? candidates[0]
-    if (candidate) {
-      const installerUrl = new URL(candidate.browser_download_url)
-      const segments = installerUrl.pathname.split('/').filter(Boolean)
-      if (
-        installerUrl.origin === 'https://github.com'
-        && segments.slice(0, 2).join('/').toLowerCase() === updateRepository.toLowerCase()
-        && segments[2] === 'releases'
-        && segments[3] === 'download'
-        && segments[4] === data.tag_name
-        && segments.length >= 6
-      ) {
-        installer = { url: installerUrl.href, name: candidate.name }
-        installerDownloads.set(data.tag_name, installer)
-      }
+  const versionNumber = release.version.match(/^v?(\d+\.\d+\.\d+)$/)?.[1]
+  const installer = versionNumber
+    ? {
+      name: `Vexlor-Control-Center-${versionNumber}-x64.exe`,
+      url: `https://github.com/${updateRepository}/releases/download/${encodeURIComponent(release.version)}/Vexlor-Control-Center-${versionNumber}-x64.exe`,
     }
-  }
+    : null
+  if (installer) installerDownloads.set(release.version, installer)
 
   const currentVersion = app.getVersion()
   return {
     currentVersion,
-    latestVersion: data.tag_name,
-    updateAvailable: isNewer(data.tag_name, currentVersion),
-    releaseUrl: releaseUrl.href,
+    latestVersion: release.version,
+    updateAvailable: isNewer(release.version, currentVersion),
+    releaseUrl: release.htmlUrl,
     downloadUrl: installer?.url ?? null,
     installerName: installer?.name ?? null,
-    notes: typeof data.body === 'string' ? data.body.slice(0, 20000) : '',
-    publishedAt: typeof data.published_at === 'string' ? data.published_at : null,
+    notes: release.notes.slice(0, 20000),
+    publishedAt: release.publishedAt,
   }
 }
 
