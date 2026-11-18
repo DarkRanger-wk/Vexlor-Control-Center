@@ -25,6 +25,16 @@ const defaultSettings: AppSettings = {
   autoCheckUpdates: true,
   telemetryEnabled: false,
   screenshotShortcut: 'Ctrl+Shift+S',
+  gamingProfileName: 'Lokales Gaming-Profil',
+  gameSoundEnabled: true,
+  gameSoundVolume: 0.35,
+  dashboardElements: {
+    systemStats: true,
+    systemOverview: true,
+    library: true,
+    arcade: true,
+    quickActions: true,
+  },
 }
 
 const idleTimerWidgetState: TimerWidgetState = {
@@ -310,7 +320,7 @@ export default function App() {
   let pageContent
   switch (page) {
     case 'Dashboard':
-      pageContent = <DashboardPage onNavigate={selectPage} />
+      pageContent = <DashboardPage onNavigate={selectPage} settings={settings} updateSettings={updateSettings} />
       break
     case 'System Monitor':
       pageContent = <SystemMonitorPage notifyError={notifyError} />
@@ -335,7 +345,10 @@ export default function App() {
       />
       break
     case 'Vexlor Arcade':
-      pageContent = <ArcadePage />
+      pageContent = <ArcadePage
+        gameSoundEnabled={settings.gameSoundEnabled}
+        gameSoundVolume={settings.gameSoundVolume}
+      />
       break
     case 'Screenshot Tool':
       pageContent = <ScreenshotPage initialImage={hotkeyScreenshot} notifyError={notifyError} notifyInfo={notifyInfo} />
@@ -355,7 +368,7 @@ export default function App() {
       pageContent = <LegalPage page={page} />
       break
     default:
-      pageContent = <DashboardPage onNavigate={selectPage} />
+      pageContent = <DashboardPage onNavigate={selectPage} settings={settings} updateSettings={updateSettings} />
   }
 
   return <div className="app-shell">

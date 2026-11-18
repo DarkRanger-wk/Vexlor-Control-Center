@@ -197,7 +197,7 @@ function validateCustomization(value: unknown): CustomizationSettings {
 
 function validateSettings(value: unknown): Partial<AppSettings> {
   assertRecord(value)
-  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'customization', 'notifications', 'autoCheckUpdates', 'telemetryEnabled', 'screenshotShortcut'])
+  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'customization', 'notifications', 'autoCheckUpdates', 'telemetryEnabled', 'screenshotShortcut', 'gamingProfileName', 'gameSoundEnabled', 'gameSoundVolume', 'dashboardElements'])
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) throw new Error(`Unbekannte Einstellung: ${key}.`)
   }
@@ -235,6 +235,30 @@ function validateSettings(value: unknown): Partial<AppSettings> {
       throw new Error('Das Hintergrundbild muss ein lokales Bild unter 5 MB sein.')
     }
     settings.backgroundData = image as string | null
+  }
+  if ('gamingProfileName' in value) {
+    assertString(value.gamingProfileName, 'Gaming-Profilname', 40)
+    if (!value.gamingProfileName.trim()) throw new Error('Der Gaming-Profilname darf nicht leer sein.')
+    settings.gamingProfileName = value.gamingProfileName.trim()
+  }
+  if ('gameSoundEnabled' in value) {
+    if (typeof value.gameSoundEnabled !== 'boolean') throw new Error('Ungültige Sound-Einstellung.')
+    settings.gameSoundEnabled = value.gameSoundEnabled
+  }
+  if ('gameSoundVolume' in value) {
+    if (typeof value.gameSoundVolume !== 'number' || !Number.isFinite(value.gameSoundVolume)
+      || value.gameSoundVolume < 0 || value.gameSoundVolume > 1) throw new Error('Ungültige Lautstärke.')
+    settings.gameSoundVolume = value.gameSoundVolume
+  }
+  if ('dashboardElements' in value) {
+    assertRecord(value.dashboardElements)
+    const keys = ['systemStats', 'systemOverview', 'library', 'arcade', 'quickActions'] as const
+    const dashboardElements = {} as AppSettings['dashboardElements']
+    for (const key of keys) {
+      if (typeof value.dashboardElements[key] !== 'boolean') throw new Error(`Ungültige Dashboard-Einstellung: ${key}.`)
+      dashboardElements[key] = value.dashboardElements[key]
+    }
+    settings.dashboardElements = dashboardElements
   }
   return settings
 }

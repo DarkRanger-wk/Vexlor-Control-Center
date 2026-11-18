@@ -269,6 +269,16 @@ h2 { color: #e2eaf5; font: 500 16px 'Space Grotesk', sans-serif; letter-spacing:
 .phase-label { color: #63738a; font: 500 8px var(--mono); letter-spacing: .7px; }
 
 .bottom-strip { display: flex; align-items: center; gap: 13px; min-height: 64px; margin-top: 15px; padding: 11px 16px; border: 1px solid rgba(81, 135, 202, .13); border-radius: 9px; background: linear-gradient(95deg, rgba(18, 33, 54, .82), rgba(12, 21, 35, .82)); }
+.dashboard-customize-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 42px; margin: -10px 0 12px; color: var(--muted); font-size: 10px; }
+.dashboard-customize-bar button { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 10px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--menu-color); color: var(--text); font-size: 10px; cursor: pointer; }
+.dashboard-customize-bar button svg { width: 14px; height: 14px; color: var(--blue); }
+.dashboard-element-panel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: -4px 0 14px; padding: 11px; }
+.dashboard-element-panel label { display: flex; align-items: center; justify-content: space-between; gap: 7px; min-height: 38px; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--text); font-size: 9px; }
+.dashboard-element-panel input { width: 15px; height: 15px; accent-color: var(--blue); }
+.dashboard-app-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.dashboard-app-stats article { display: flex; flex-direction: column; gap: 7px; min-height: 92px; padding: 15px; }
+.dashboard-app-stats strong { color: var(--text); font-size: 13px; }
+.dashboard-app-stats small { color: var(--muted); font-size: 9px; line-height: 1.45; }
 .strip-icon { display: grid; flex: 0 0 32px; width: 32px; height: 32px; place-items: center; border: 1px solid rgba(74, 145, 237, .18); border-radius: 8px; background: rgba(51, 114, 191, .13); color: #65adff; }
 .strip-icon svg { width: 16px; height: 16px; }
 .strip-copy { display: flex; flex: 1; flex-direction: column; gap: 4px; }
@@ -387,7 +397,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .text-button:hover { color: #c5e1ff; }
 .text-button svg { width: 13px; height: 13px; }
 .icon-button, .close-button, .danger-icon-button { cursor: pointer; }
-.quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+.quick-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .quick-actions button { display: flex; align-items: center; gap: 10px; min-height: 45px; padding: 0 13px; border: 1px solid var(--line); border-radius: 8px; background: rgba(12, 21, 35, .76); color: #a8b7cc; font-size: 10px; text-align: left; }
 .quick-actions button:hover { border-color: rgba(74, 145, 237, .34); background: rgba(25, 45, 72, .62); color: #e0efff; }
 .quick-actions button > svg:first-child { width: 15px; height: 15px; color: #69aef7; }
@@ -597,6 +607,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .setting-row > div { display: flex; flex-direction: column; gap: 4px; }
 .setting-row strong { color: #c0cede; font-size: 10px; font-weight: 500; }
 .setting-row small { color: #728198; font-size: 8px; }
+.setting-profile-row, .setting-range-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 58px; border-top: 1px solid var(--line); }
+.setting-profile-row > span, .setting-range-row > span { display: flex; flex: 1; flex-direction: column; gap: 4px; }
+.setting-profile-row strong, .setting-range-row strong { color: var(--text); font-size: 11px; }
+.setting-profile-row small, .setting-range-row small { color: var(--muted); font-size: 9px; }
+.setting-profile-row input { width: min(260px, 42%); height: 36px; padding: 0 10px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; background: var(--card-color); color: var(--text); }
+.setting-range-row input { width: min(220px, 32%); accent-color: var(--blue); }
+.setting-range-row b { min-width: 42px; color: var(--blue); font: 600 11px var(--mono); text-align: right; }
 .setting-value { padding: 5px 7px; border: 1px solid rgba(126, 151, 186, .13); border-radius: 4px; color: #92a7c1; font: 500 8px var(--mono); }
 .settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 190px; align-items: start; gap: 13px; }
 .settings-main { display: flex; flex-direction: column; gap: 12px; }

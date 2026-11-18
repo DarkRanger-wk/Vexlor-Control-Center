@@ -23,6 +23,16 @@ const defaultSettings: AppSettings = {
   autoCheckUpdates: true,
   telemetryEnabled: false,
   screenshotShortcut: 'Ctrl+Shift+S',
+  gamingProfileName: 'Lokales Gaming-Profil',
+  gameSoundEnabled: true,
+  gameSoundVolume: 0.35,
+  dashboardElements: {
+    systemStats: true,
+    systemOverview: true,
+    library: true,
+    arcade: true,
+    quickActions: true,
+  },
 }
 
 const emptyData = (): LocalData => ({

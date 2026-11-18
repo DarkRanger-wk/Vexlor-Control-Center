@@ -1,6 +1,6 @@
 {
   "name": "vexlor-control-center",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "private": true,
   "description": "Vexlor Control Center – Gaming- und Systemübersicht für Windows",
   "main": "./out/main/index.js",
@@ -22,7 +22,7 @@
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
-    "electron": "^45.3.2",
+    "electron": "45.3.2",
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.0",
     "typescript": "^5.8.3",

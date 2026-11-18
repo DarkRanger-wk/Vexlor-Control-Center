@@ -47,7 +47,7 @@ function errorMessage(error, fallback) {
   return error instanceof Error ? error.message : fallback
 }
 
-export default function ArcadePage() {
+export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 0.35 }) {
   const [profile, setProfile] = useState(createArcadeProfile)
   const [view, setView] = useState('hub')
   const [profileReady, setProfileReady] = useState(false)
@@ -66,7 +66,7 @@ export default function ArcadePage() {
         if (!active) return
         profileRef.current = validProfile
         setProfile(validProfile)
-        setVolume(validProfile.soundVolume)
+        setVolume(gameSoundEnabled ? gameSoundVolume : 0)
         setStorageError('')
         setProfileReady(true)
       })
@@ -76,7 +76,11 @@ export default function ArcadePage() {
         setProfileReady(true)
       })
     return () => { active = false }
-  }, [])
+  }, [gameSoundEnabled, gameSoundVolume])
+
+  useEffect(() => {
+    setVolume(gameSoundEnabled ? gameSoundVolume : 0)
+  }, [gameSoundEnabled, gameSoundVolume])
 
   useEffect(() => {
     mountedRef.current = true
@@ -134,7 +138,7 @@ export default function ArcadePage() {
   const resetProfile = () => {
     if (!window.confirm('Arcade-Rekorde, Spielzeit und Erfolge auf diesem PC zurücksetzen?')) return
     persistProfile(createArcadeProfile())
-    setVolume(0.35)
+    setVolume(gameSoundEnabled ? gameSoundVolume : 0)
   }
 
   const miniGameProps = {

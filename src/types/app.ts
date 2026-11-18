@@ -54,6 +54,16 @@ export interface AppSettings {
   autoCheckUpdates: boolean
   telemetryEnabled: boolean
   screenshotShortcut: string
+  gamingProfileName: string
+  gameSoundEnabled: boolean
+  gameSoundVolume: number
+  dashboardElements: {
+    systemStats: boolean
+    systemOverview: boolean
+    library: boolean
+    arcade: boolean
+    quickActions: boolean
+  }
 }
 
 export interface CustomizationColors {
