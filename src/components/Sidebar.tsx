@@ -3,6 +3,7 @@ import { Icon, type IconName } from './Icon'
 interface SidebarProps {
   activeItem: string
   compact: boolean
+  iconOverrides?: Record<string, string>
   onSelect: (page: string) => void
 }
 
@@ -18,12 +19,18 @@ const navigation: { label: string; icon: IconName }[] = [
 ]
 
 const preferences: { label: string; icon: IconName }[] = [
-  { label: 'Anpassung', icon: 'spark' },
+  { label: 'Customization', icon: 'spark' },
   { label: 'Einstellungen', icon: 'settings' },
   { label: 'Über Vexlor', icon: 'arrow' },
 ]
 
-export function Sidebar({ activeItem, compact, onSelect }: SidebarProps) {
+const iconNames: IconName[] = [
+  'dashboard', 'monitor', 'library', 'performance', 'network', 'tools', 'arcade', 'target',
+  'clock', 'crown', 'bolt', 'launch', 'screenshot', 'copy', 'save', 'zoomIn', 'zoomOut',
+  'settings', 'refresh', 'cpu', 'memory', 'windows', 'spark', 'arrow',
+]
+
+export function Sidebar({ activeItem, compact, iconOverrides = {}, onSelect }: SidebarProps) {
   return (
     <aside className={`sidebar${compact ? ' compact' : ''}`}>
       <button className="brand" onClick={() => onSelect('Dashboard')} aria-label="Vexlor Control Center Startseite">
@@ -32,11 +39,11 @@ export function Sidebar({ activeItem, compact, onSelect }: SidebarProps) {
       </button>
       <div className="sidebar-label">WORKSPACE</div>
       <nav className="navigation" aria-label="Hauptnavigation">
-        {navigation.map((item) => <NavItem key={item.label} item={item} activeItem={activeItem} onSelect={onSelect} />)}
+        {navigation.map((item) => <NavItem key={item.label} item={item} iconOverrides={iconOverrides} activeItem={activeItem} onSelect={onSelect} />)}
       </nav>
       <div className="sidebar-label sidebar-section-label">PREFERENCES</div>
       <nav className="navigation" aria-label="Einstellungen und Informationen">
-        {preferences.map((item) => <NavItem key={item.label} item={item} activeItem={activeItem} onSelect={onSelect} />)}
+        {preferences.map((item) => <NavItem key={item.label} item={item} iconOverrides={iconOverrides} activeItem={activeItem} onSelect={onSelect} />)}
       </nav>
       <div className="sidebar-spacer" />
       <div className="sidebar-status"><span className="status-orb" /><span>System lokal verbunden</span></div>
@@ -45,7 +52,14 @@ export function Sidebar({ activeItem, compact, onSelect }: SidebarProps) {
   )
 }
 
-function NavItem({ item, activeItem, onSelect }: { item: { label: string; icon: IconName }; activeItem: string; onSelect: (page: string) => void }) {
+function NavItem({ item, iconOverrides, activeItem, onSelect }: {
+  item: { label: string; icon: IconName }
+  iconOverrides: Record<string, string>
+  activeItem: string
+  onSelect: (page: string) => void
+}) {
   const active = item.label === activeItem
-  return <button className={`nav-item${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined} onClick={() => onSelect(item.label)} title={item.label}><Icon name={item.icon} /><span>{item.label}</span>{active && <span className="nav-indicator" />}</button>
+  const override = iconOverrides[item.label]
+  const icon = iconNames.includes(override as IconName) ? override as IconName : item.icon
+  return <button className={`nav-item${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined} onClick={() => onSelect(item.label)} title={item.label}><Icon name={icon} /><span>{item.label}</span>{active && <span className="nav-indicator" />}</button>
 }

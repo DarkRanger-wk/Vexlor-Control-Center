@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import packageJson from '../../package.json'
 import { Icon } from '../components/Icon'
 import { Sidebar } from '../components/Sidebar'
+import { createDefaultCustomization } from '../services/customization.mjs'
 import type { AppSettings, TimerWidgetAction, TimerWidgetState } from '../types/app'
 import { DashboardPage } from './DashboardPage'
 import { LibraryPage } from './LibraryPage'
 import { NetworkPage, PerformancePage, SystemMonitorPage } from './SystemPages'
-import { AboutPage, CustomizationPage, LegalPage, SettingsPage } from './SettingsPage'
+import { AboutPage, LegalPage, SettingsPage } from './SettingsPage'
 import { ToolsPage } from './ToolsPage'
 import { ScreenshotPage } from './ScreenshotPage'
 import ArcadePage from './ArcadePage.jsx'
+import CustomizationPage from './CustomizationPage.jsx'
 
 const defaultSettings: AppSettings = {
   accent: '#428bff',
@@ -17,6 +19,7 @@ const defaultSettings: AppSettings = {
   animations: true,
   compactSidebar: false,
   backgroundData: null,
+  customization: createDefaultCustomization(),
   notifications: true,
   launchAtLogin: false,
   autoCheckUpdates: true,
@@ -38,6 +41,8 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; kind: 'error' | 'info' } | null>(null)
   const [hotkeyScreenshot, setHotkeyScreenshot] = useState<string | null>(null)
   const [timerWidgetState, setTimerWidgetState] = useState(idleTimerWidgetState)
+  const settingsRef = useRef(defaultSettings)
+  const customizationSaveTimeout = useRef<number | null>(null)
   const lastWidgetState = useRef('')
   const notifiedUpdateTag = useRef<string | null>(null)
 
@@ -48,6 +53,7 @@ export default function App() {
     let active = true
     window.vcc.getSettings().then((saved) => {
       if (!active) return
+      settingsRef.current = saved
       setSettings(saved)
     }).catch((error: unknown) => {
       if (active) notifyError(error instanceof Error ? error.message : 'Einstellungen konnten nicht geladen werden.')
@@ -190,16 +196,72 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.theme
-    document.documentElement.dataset.animations = String(settings.animations)
-    document.documentElement.style.setProperty('--blue', settings.accent)
-    document.documentElement.style.setProperty('--user-background', settings.backgroundData ? `url("${settings.backgroundData}")` : 'none')
-    document.documentElement.dataset.compactSidebar = String(settings.compactSidebar)
-  }, [settings])
+    const root = document.documentElement
+    const { values } = settings.customization
+    const { colors, background, layout } = values
+    const backgroundLayer = background.mode === 'gradient'
+      ? `linear-gradient(135deg, ${background.gradientStart}, ${background.gradientEnd})`
+      : background.mode === 'image' && background.imageData
+        ? `url("${background.imageData}")`
+        : 'none'
+
+    root.dataset.theme = values.themeId
+    root.dataset.animations = String(layout.animations)
+    root.dataset.compactSidebar = String(layout.compactSidebar)
+    root.dataset.shadows = String(layout.shadows)
+    root.dataset.glow = String(layout.glow)
+    root.style.setProperty('--bg', colors.background)
+    root.style.setProperty('--sidebar', colors.sidebar)
+    root.style.setProperty('--panel', colors.card)
+    root.style.setProperty('--panel-raised', colors.menu)
+    root.style.setProperty('--line', colors.border)
+    root.style.setProperty('--text', colors.text)
+    root.style.setProperty('--muted', colors.muted)
+    root.style.setProperty('--blue', colors.accent)
+    root.style.setProperty('--cyan', colors.accent)
+    root.style.setProperty('--accent-color', colors.accent)
+    root.style.setProperty('--button-color', colors.button)
+    root.style.setProperty('--menu-color', colors.menu)
+    root.style.setProperty('--card-color', colors.card)
+    root.style.setProperty('--border-color', colors.border)
+    root.style.setProperty('--muted-color', colors.muted)
+    root.style.setProperty('--sidebar-width', `${layout.sidebarWidth}px`)
+    root.style.setProperty('--base-font-size', `${layout.fontSize}px`)
+    root.style.setProperty('--ui-scale', String(layout.fontSize / 10))
+    root.style.setProperty('--font-family-ui', `"${layout.fontFamily}"`)
+    root.style.setProperty('--radius-base', `${layout.radius}px`)
+    root.style.setProperty('--surface-transparency', `${layout.transparency}%`)
+    root.style.setProperty('--animation-speed', String(layout.animationSpeed))
+    root.style.setProperty('--background-layer', backgroundLayer)
+    root.style.setProperty('--background-color', `color-mix(in srgb, ${colors.background} ${background.opacity}%, #080d18)`)
+    root.style.setProperty('--background-blur', `${background.blur}px`)
+    root.style.setProperty('--background-opacity', String(background.opacity / 100))
+    root.style.setProperty('--surface-shadow', layout.shadows ? '0 18px 48px rgba(0, 0, 0, .2)' : 'none')
+    root.style.setProperty('--glow-shadow', layout.glow ? `0 0 18px color-mix(in srgb, ${colors.accent}, transparent 62%)` : 'none')
+  }, [settings.customization])
 
   const updateSettings = useCallback(async (patch: Partial<AppSettings>): Promise<boolean> => {
+    if ('customization' in patch) {
+      const next = { ...settingsRef.current, ...patch }
+      settingsRef.current = next
+      setSettings(next)
+      setToast(null)
+      if (customizationSaveTimeout.current !== null) window.clearTimeout(customizationSaveTimeout.current)
+      customizationSaveTimeout.current = window.setTimeout(() => {
+        customizationSaveTimeout.current = null
+        void window.vcc.saveSettings(patch).then((saved) => {
+          settingsRef.current = saved
+          setSettings(saved)
+        }).catch((error: unknown) => {
+          notifyError(error instanceof Error ? error.message : 'Anpassungen konnten nicht gespeichert werden.')
+        })
+      }, 180)
+      return true
+    }
+
     try {
       const saved = await window.vcc.saveSettings(patch)
+      settingsRef.current = saved
       setSettings(saved)
       setToast(null)
       return true
@@ -278,8 +340,8 @@ export default function App() {
     case 'Screenshot Tool':
       pageContent = <ScreenshotPage initialImage={hotkeyScreenshot} notifyError={notifyError} notifyInfo={notifyInfo} />
       break
-    case 'Anpassung':
-      pageContent = <CustomizationPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} onNavigate={selectPage} />
+    case 'Customization':
+      pageContent = <CustomizationPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} />
       break
     case 'Einstellungen':
       pageContent = <SettingsPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} onNavigate={selectPage} onUpdateChecked={(update) => setAvailableUpdate(update.updateAvailable && update.latestVersion ? { tag: update.latestVersion, hasInstaller: Boolean(update.downloadUrl) } : null)} />
@@ -297,7 +359,12 @@ export default function App() {
   }
 
   return <div className="app-shell">
-    <Sidebar activeItem={page} compact={settings.compactSidebar} onSelect={selectPage} />
+    <Sidebar
+      activeItem={page}
+      compact={settings.customization.values.layout.compactSidebar}
+      iconOverrides={settings.customization.values.layout.sidebarIcons}
+      onSelect={selectPage}
+    />
     <main className="main-content">
       <header className="topbar">
         <div className="breadcrumb"><span>VEXLOR</span><b>/</b><strong>{page}</strong></div>

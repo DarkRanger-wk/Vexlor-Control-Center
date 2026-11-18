@@ -112,16 +112,15 @@ function hasVisibleTimer(): boolean {
 
 function createWidgetWindow(): void {
   if (widgetWindow && !widgetWindow.isDestroyed()) {
+    widgetWindow.setBounds(getWidgetBounds())
     if (!widgetWindow.isVisible()) widgetWindow.showInactive()
     return
   }
 
-  const workArea = screen.getPrimaryDisplay().workArea
   const width = 338
   const height = 166
   const window = new BrowserWindow({
-    x: workArea.x + workArea.width - width - 18,
-    y: workArea.y + 18,
+    ...getWidgetBounds(width, height),
     width,
     height,
     frame: false,
@@ -167,6 +166,19 @@ function createWidgetWindow(): void {
     void window.loadURL(new URL('timer-widget.html', process.env.ELECTRON_RENDERER_URL).href)
   } else {
     void window.loadFile(join(__dirname, '../renderer/timer-widget.html'))
+  }
+}
+
+function getWidgetBounds(width = 338, height = 166): Electron.Rectangle {
+  const display = mainWindow && !mainWindow.isDestroyed()
+    ? screen.getDisplayMatching(mainWindow.getBounds())
+    : screen.getPrimaryDisplay()
+  const { x, y, width: workWidth, height: workHeight } = display.workArea
+  return {
+    x: Math.max(x + 8, x + workWidth - width - 18),
+    y: y + 18,
+    width: Math.min(width, workWidth - 16),
+    height: Math.min(height, workHeight - 36),
   }
 }
 

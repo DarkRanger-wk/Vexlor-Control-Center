@@ -48,11 +48,76 @@ export interface AppSettings {
   animations: boolean
   compactSidebar: boolean
   backgroundData: string | null
+  customization: CustomizationSettings
   notifications: boolean
   launchAtLogin: boolean
   autoCheckUpdates: boolean
   telemetryEnabled: boolean
   screenshotShortcut: string
+}
+
+export interface CustomizationColors {
+  accent: string
+  background: string
+  sidebar: string
+  card: string
+  menu: string
+  button: string
+  border: string
+  text: string
+  muted: string
+}
+
+export interface CustomizationValues {
+  themeId: string
+  colors: CustomizationColors
+  background: {
+    mode: 'solid' | 'gradient' | 'image'
+    gradientStart: string
+    gradientEnd: string
+    imageData: string | null
+    blur: number
+    opacity: number
+  }
+  layout: {
+    sidebarWidth: number
+    compactSidebar: boolean
+    fontSize: number
+    fontFamily: string
+    radius: number
+    transparency: number
+    shadows: boolean
+    glow: boolean
+    animations: boolean
+    animationSpeed: number
+    sidebarIcons: Record<string, string>
+  }
+}
+
+export interface CustomizationProfile {
+  id: string
+  name: string
+  values: CustomizationValues
+}
+
+export interface CustomizationTheme {
+  id: string
+  name: string
+  values: CustomizationValues
+}
+
+export interface CustomizationPalette {
+  id: string
+  name: string
+  colors: CustomizationColors
+}
+
+export interface CustomizationSettings {
+  activeProfileId: string
+  values: CustomizationValues
+  profiles: CustomizationProfile[]
+  themes: CustomizationTheme[]
+  palettes: CustomizationPalette[]
 }
 
 export interface ScreenshotDisplay {

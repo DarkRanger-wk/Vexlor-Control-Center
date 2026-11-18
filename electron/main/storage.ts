@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
-import type { ArcadeProfile, AppSettings, GameEntry } from '../../src/types/app'
+import { createDefaultCustomization } from '../../src/services/customization.mjs'
+import type { ArcadeProfile, AppSettings, CustomizationSettings, GameEntry } from '../../src/types/app'
 
 interface LocalData {
   games: GameEntry[]
@@ -16,6 +17,7 @@ const defaultSettings: AppSettings = {
   animations: true,
   compactSidebar: false,
   backgroundData: null,
+  customization: createDefaultCustomization(),
   notifications: true,
   launchAtLogin: false,
   autoCheckUpdates: true,
@@ -169,12 +171,44 @@ function readData(): LocalData {
 
   const savedSettings = { ...value.settings }
   delete (savedSettings as Partial<AppSettings> & { githubRepository?: unknown }).githubRepository
+  const customization = savedSettings.customization ?? migrateCustomization(savedSettings)
 
   return {
     games: value.games as GameEntry[],
-    settings: { ...defaultSettings, ...savedSettings },
+    settings: { ...defaultSettings, ...savedSettings, customization },
     notes: value.notes,
     arcade: value.arcade === undefined ? emptyArcadeProfile() : validateArcadeProfile(value.arcade),
+  }
+}
+
+function migrateCustomization(settings: Partial<AppSettings>): CustomizationSettings {
+  const defaults = createDefaultCustomization()
+  const values = defaults.values
+  const colors = { ...values.colors }
+  if (typeof settings.accent === 'string' && /^#[\da-f]{6}$/i.test(settings.accent)) {
+    colors.accent = settings.accent
+  }
+
+  const imageData = typeof settings.backgroundData === 'string' ? settings.backgroundData : null
+  const migratedValues = {
+    ...values,
+    colors,
+    background: {
+      ...values.background,
+      imageData,
+      mode: imageData ? 'image' as const : values.background.mode,
+    },
+    layout: {
+      ...values.layout,
+      animations: settings.animations ?? values.layout.animations,
+      compactSidebar: settings.compactSidebar ?? values.layout.compactSidebar,
+    },
+  }
+
+  return {
+    ...defaults,
+    values: migratedValues,
+    profiles: defaults.profiles.map((profile) => ({ ...profile, values: migratedValues })),
   }
 }
 

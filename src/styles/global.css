@@ -898,6 +898,72 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .screenshot-preview-viewport.has-image { display: block; padding: 12px; border-style: solid; border-color: rgba(125, 153, 190, .12); }
 .screenshot-preview-viewport > img { display: block; height: auto; margin: auto; border-radius: 3px; box-shadow: 0 12px 35px rgba(0, 0, 0, .35); }
 .screenshot-preview-empty { display: flex; flex-direction: column; align-items: center; padding: 24px; text-align: center; }
+
+:root {
+  font-family: var(--font-family-ui, 'DM Sans', 'Segoe UI', sans-serif);
+  font-size: 10px;
+  zoom: var(--ui-scale, 1);
+  color: var(--text);
+}
+
+body { background: var(--background-color, var(--bg)); }
+.app-shell::before {
+  position: fixed;
+  z-index: -1;
+  inset: -24px;
+  background-image: var(--background-layer, none);
+  background-position: center;
+  background-size: cover;
+  content: '';
+  opacity: var(--background-opacity, 1);
+  filter: blur(var(--background-blur, 0px));
+  pointer-events: none;
+}
+
+.app-shell { position: relative; isolation: isolate; background: transparent; }
+.sidebar {
+  flex-basis: var(--sidebar-width, 248px);
+  border-color: var(--border-color, var(--line));
+  background: color-mix(in srgb, var(--sidebar), transparent var(--surface-transparency, 8%));
+  box-shadow: var(--surface-shadow, none);
+}
+.sidebar.compact { flex-basis: 76px; }
+.nav-item { border-radius: var(--radius-base, 8px); }
+:root .panel, :root .metric-card {
+  border-color: var(--border-color, var(--line));
+  border-radius: var(--radius-base, 11px);
+  background: color-mix(in srgb, var(--card-color, var(--panel)), transparent var(--surface-transparency, 8%));
+  box-shadow: var(--surface-shadow, none);
+}
+.metric-card { animation-duration: calc(.45s * var(--animation-speed, 1)); transition-duration: calc(.2s * var(--animation-speed, 1)); }
+.refresh-button, .metric-card, .sidebar { transition-duration: calc(.2s * var(--animation-speed, 1)); }
+.nav-item, .quick-actions button { transition-duration: calc(.18s * var(--animation-speed, 1)); }
+.activity-chart > span { transition-duration: calc(.25s * var(--animation-speed, 1)); }
+.metric-progress span { transition-duration: calc(.5s * var(--animation-speed, 1)); }
+.refresh-button.spinning svg { animation-duration: calc(.75s * var(--animation-speed, 1)); }
+.screenshot-mode-content { animation-duration: calc(.25s * var(--animation-speed, 1)); }
+.primary-button {
+  border-radius: var(--radius-base, 8px);
+  background: linear-gradient(110deg, color-mix(in srgb, var(--button-color, var(--blue)), white 9%), color-mix(in srgb, var(--button-color, var(--blue)), #142d50 65%));
+  box-shadow: var(--glow-shadow, none);
+}
+.subtle-button, .close-button { border-radius: var(--radius-base, 7px); }
+:root[data-glow='true'] .nav-item.active { box-shadow: inset 2px 0 0 var(--accent-color), 0 0 16px color-mix(in srgb, var(--accent-color), transparent 82%); }
+:root[data-shadows='false'] .metric-card, :root[data-shadows='false'] .panel { box-shadow: none; }
+:root[data-theme='pure-white'] body { color: #152033; }
+:root[data-theme='pure-white'] .topbar,
+:root[data-theme='pure-white'] .sidebar { background-color: color-mix(in srgb, var(--sidebar), transparent 4%); }
+:root[data-theme='pure-white'] .topbar { background-image: none; }
+:root[data-theme='pure-white'] .panel,
+:root[data-theme='pure-white'] .metric-card { color: var(--text); }
+:root[data-theme='pure-white'] .page-scroll h1,
+:root[data-theme='pure-white'] .page-scroll h2,
+:root[data-theme='pure-white'] .page-scroll h3,
+:root[data-theme='pure-white'] .page-scroll strong { color: var(--text); }
+:root[data-theme='pure-white'] .page-scroll p,
+:root[data-theme='pure-white'] .page-scroll small,
+:root[data-theme='pure-white'] .page-scroll label,
+:root[data-theme='pure-white'] .page-scroll .section-kicker { color: var(--muted); }
 .screenshot-preview-empty > span { display: grid; width: 49px; height: 49px; place-items: center; border: 1px solid rgba(83, 152, 238, .2); border-radius: 14px; background: rgba(46, 105, 179, .1); color: #70aefa; }
 .screenshot-preview-empty svg { width: 21px; height: 21px; }
 .screenshot-preview-empty strong { margin-top: 13px; color: #b8c8dd; font-size: 10px; font-weight: 500; }

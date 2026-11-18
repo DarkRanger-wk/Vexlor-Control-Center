@@ -13,36 +13,6 @@ interface PageProps {
   onUpdateChecked?: (update: UpdateInfo) => void
 }
 
-export function CustomizationPage({ settings, updateSettings, notifyError }: PageProps) {
-  const accents = [
-    { color: '#428bff', label: 'Electric Blue' },
-    { color: '#36d3df', label: 'Cyan' },
-    { color: '#8f78ff', label: 'Violet' },
-    { color: '#4bd59a', label: 'Mint' },
-    { color: '#ff8b55', label: 'Amber' },
-    { color: '#f06e9e', label: 'Rose' },
-  ]
-
-  const chooseBackground = async () => {
-    try {
-      const backgroundData = await window.vcc.chooseBackground()
-      if (backgroundData) await updateSettings({ backgroundData })
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : 'Hintergrundbild konnte nicht geladen werden.')
-    }
-  }
-
-  return <>
-    <PageIntro eyebrow="DEIN LOOK" title="Anpassung" description="Passe Akzentfarbe, Hintergrund und Darstellung an. Änderungen werden lokal gespeichert." />
-    <section className="settings-grid">
-      <article className="settings-card panel"><SettingHeading icon="spark" title="Farbakzent" description="Wähle die Akzentfarbe der Oberfläche." /><div className="accent-options">{accents.map((accent) => <button key={accent.color} className={`accent-option${settings.accent === accent.color ? ' chosen' : ''}`} onClick={() => void updateSettings({ accent: accent.color })} aria-label={accent.label} title={accent.label}><span style={{ backgroundColor: accent.color }} />{settings.accent === accent.color && <b>✓</b>}</button>)}</div><div className="custom-color-row"><label htmlFor="custom-accent">Eigene Farbe</label><input id="custom-accent" type="color" value={settings.accent} onChange={(event) => void updateSettings({ accent: event.target.value })} /></div></article>
-      <article className="settings-card panel"><SettingHeading icon="monitor" title="Oberflächenthema" description="Das Farbschema wirkt auf die gesamte App." /><div className="theme-options">{([{ id: 'navy', title: 'Deep Navy', desc: 'Navy & Electric Blue' }, { id: 'midnight', title: 'Midnight', desc: 'Dunkel & Cyan' }, { id: 'graphite', title: 'Graphite', desc: 'Neutral & zurückhaltend' }] as const).map((theme) => <button key={theme.id} className={`theme-option theme-${theme.id}${settings.theme === theme.id ? ' chosen' : ''}`} onClick={() => void updateSettings({ theme: theme.id })}><span className="theme-preview"><i /><i /><i /></span><span><strong>{theme.title}</strong><small>{theme.desc}</small></span><i className="radio-dot" /></button>)}</div></article>
-      <article className="settings-card panel"><SettingHeading icon="library" title="Hintergrundbild" description="Ein lokales Bild wird in den App-Einstellungen gespeichert." /><div className="background-preview" style={settings.backgroundData ? { backgroundImage: `linear-gradient(90deg, rgba(7,12,22,.55), rgba(7,12,22,.25)), url("${settings.backgroundData}")` } : undefined}><span>{settings.backgroundData ? 'Eigenes Hintergrundbild' : 'Kein eigenes Hintergrundbild'}</span></div><div className="setting-actions"><button className="subtle-button" onClick={() => void chooseBackground()}>Bild auswählen</button>{settings.backgroundData && <button className="subtle-button" onClick={() => void updateSettings({ backgroundData: null })}>Entfernen</button>}</div><small className="setting-footnote">PNG, JPEG oder WebP · maximal 5 MB · keine externen Bilder.</small></article>
-      <article className="settings-card panel"><SettingHeading icon="settings" title="Darstellung" description="Bedienkomfort und Bewegungen anpassen." /><SettingSwitch title="Animationen" description="Dezente Übergänge und Bewegungseffekte" checked={settings.animations} onChange={(value) => void updateSettings({ animations: value })} /><SettingSwitch title="Kompakte Navigation" description="Sidebar auf Symbolbreite reduzieren" checked={settings.compactSidebar} onChange={(value) => void updateSettings({ compactSidebar: value })} /></article>
-    </section>
-  </>
-}
-
 export function SettingsPage({ settings, updateSettings, notifyError, notifyInfo, onNavigate, onUpdateChecked }: PageProps) {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [checking, setChecking] = useState(false)
@@ -143,7 +113,7 @@ export function SettingsPage({ settings, updateSettings, notifyError, notifyInfo
 
         <section className="settings-card panel" id="ueber"><SettingHeading icon="spark" title="Über Vexlor Control Center" description={`VCC · Version ${packageJson.version} · Windows-Desktop-Anwendung.`} /><p className="about-copy">Dein lokales Control Center für Systemübersicht, Spiele und Gaming-Werkzeuge.</p><div className="legal-link-row"><button onClick={() => onNavigate('Impressum')}>Impressum <Icon name="arrow" /></button><button onClick={() => onNavigate('Datenschutzerklärung')}>Datenschutzerklärung <Icon name="arrow" /></button><button onClick={() => onNavigate('Nutzungsbedingungen')}>Nutzungsbedingungen <Icon name="arrow" /></button></div><button className="text-button contact-button" onClick={() => void window.vcc.openEmail()}>Kontakt: kontakt.noah224@gmail.com <Icon name="arrow" /></button></section>
       </div>
-      <aside className="settings-aside panel"><div className="section-kicker">DIREKT ZU</div>{[['Allgemein', 'allgemein'], ['Updates', 'updates'], ['Datenschutz', 'datenschutz'], ['Über VCC', 'ueber']].map(([label, id]) => <a href={`#${id}`} key={id}>{label}<Icon name="arrow" /></a>)}<div className="aside-divider" /><span>THEMEN</span><button onClick={() => onNavigate('Anpassung')}>Design & Anpassung <Icon name="arrow" /></button><button onClick={() => onNavigate('Impressum')}>Impressum <Icon name="arrow" /></button><button onClick={() => onNavigate('Datenschutzerklärung')}>Datenschutz <Icon name="arrow" /></button><button onClick={() => onNavigate('Nutzungsbedingungen')}>Nutzungsbedingungen <Icon name="arrow" /></button></aside>
+      <aside className="settings-aside panel"><div className="section-kicker">DIREKT ZU</div>{[['Allgemein', 'allgemein'], ['Updates', 'updates'], ['Datenschutz', 'datenschutz'], ['Über VCC', 'ueber']].map(([label, id]) => <a href={`#${id}`} key={id}>{label}<Icon name="arrow" /></a>)}<div className="aside-divider" /><span>THEMEN</span><button onClick={() => onNavigate('Customization')}>Customization <Icon name="arrow" /></button><button onClick={() => onNavigate('Impressum')}>Impressum <Icon name="arrow" /></button><button onClick={() => onNavigate('Datenschutzerklärung')}>Datenschutz <Icon name="arrow" /></button><button onClick={() => onNavigate('Nutzungsbedingungen')}>Nutzungsbedingungen <Icon name="arrow" /></button></aside>
     </div>
   </>
 }

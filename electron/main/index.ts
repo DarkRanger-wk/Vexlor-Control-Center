@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import type { AppSettings, GameEntry } from '../../src/types/app'
+import type { AppSettings, CustomizationColors, CustomizationSettings, CustomizationValues, GameEntry } from '../../src/types/app'
 import { assertNoArgs, assertRecord, assertString, assertTrustedRenderer } from '../security/validation'
 import { readNetworkSnapshot, readProcessList, readSystemSnapshot } from './monitor'
 import { localStorage } from './storage'
@@ -29,6 +29,9 @@ import { registerTelemetryLifecycle, setTelemetryEnabled } from './telemetry'
 const colorPattern = /^#[\da-fA-F]{6}$/
 const imagePattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
 const maxImageBytes = 5 * 1024 * 1024
+const customizationColorKeys = ['accent', 'background', 'sidebar', 'card', 'menu', 'button', 'border', 'text', 'muted'] as const
+const customizationIcons = new Set(['dashboard', 'monitor', 'library', 'performance', 'network', 'tools', 'arcade', 'target', 'clock', 'crown', 'bolt', 'launch', 'screenshot', 'copy', 'save', 'zoomIn', 'zoomOut', 'settings', 'refresh', 'cpu', 'memory', 'windows', 'spark', 'arrow'])
+const customizationNavigation = new Set(['Dashboard', 'System Monitor', 'Spielebibliothek', 'Performance', 'Network Center', 'Gaming Tools', 'Vexlor Arcade', 'Screenshot Tool', 'Customization', 'Einstellungen', 'Über Vexlor'])
 
 function register(
   channel: string,
@@ -72,14 +75,135 @@ function validateGame(value: unknown): GameEntry {
   }
 }
 
+function validateCustomizationColors(value: unknown): CustomizationColors {
+  assertRecord(value)
+  const colors = {} as CustomizationColors
+  for (const key of customizationColorKeys) {
+    if (typeof value[key] !== 'string' || !colorPattern.test(value[key])) throw new Error(`Ungültige Customization-Farbe: ${key}.`)
+    colors[key] = value[key]
+  }
+  return colors
+}
+
+function validateCustomizationNumber(record: Record<string, unknown>, key: string, min: number, max: number): number {
+  const value = record[key]
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    throw new Error(`Ungültiger Customization-Wert: ${key}.`)
+  }
+  return value
+}
+
+function validateCustomizationBoolean(record: Record<string, unknown>, key: string): boolean {
+  const value = record[key]
+  if (typeof value !== 'boolean') throw new Error(`Ungültiger Customization-Wert: ${key}.`)
+  return value
+}
+
+function validateCustomizationValues(value: unknown): CustomizationValues {
+  assertRecord(value)
+  assertString(value.themeId, 'Theme-ID', 100)
+  assertRecord(value.background)
+  assertRecord(value.layout)
+  const colors = validateCustomizationColors(value.colors)
+  const background = value.background
+  const layout = value.layout
+  if (background.mode !== 'solid' && background.mode !== 'gradient' && background.mode !== 'image') throw new Error('Ungültiger Hintergrundmodus.')
+  const gradientStart = background.gradientStart
+  const gradientEnd = background.gradientEnd
+  if (typeof gradientStart !== 'string' || !colorPattern.test(gradientStart)
+    || typeof gradientEnd !== 'string' || !colorPattern.test(gradientEnd)) throw new Error('Ungültige Verlaufsfarbe.')
+  const imageData = background.imageData
+  if (imageData !== null && (typeof imageData !== 'string' || imageData.length > maxImageBytes * 1.5 || !imagePattern.test(imageData))) {
+    throw new Error('Das Hintergrundbild muss ein lokales Bild unter 5 MB sein.')
+  }
+  const blur = validateCustomizationNumber(background, 'blur', 0, 24)
+  const opacity = validateCustomizationNumber(background, 'opacity', 0, 100)
+  const sidebarWidth = validateCustomizationNumber(layout, 'sidebarWidth', 180, 340)
+  const fontSize = validateCustomizationNumber(layout, 'fontSize', 9, 16)
+  const radius = validateCustomizationNumber(layout, 'radius', 0, 24)
+  const transparency = validateCustomizationNumber(layout, 'transparency', 0, 30)
+  const animationSpeed = validateCustomizationNumber(layout, 'animationSpeed', 0.5, 2)
+  const compactSidebar = validateCustomizationBoolean(layout, 'compactSidebar')
+  const shadows = validateCustomizationBoolean(layout, 'shadows')
+  const glow = validateCustomizationBoolean(layout, 'glow')
+  const animations = validateCustomizationBoolean(layout, 'animations')
+  const fontFamilies = new Set(['DM Sans', 'Segoe UI', 'Arial', 'Verdana', 'Consolas'])
+  const fontFamily = layout.fontFamily
+  if (typeof fontFamily !== 'string' || !fontFamilies.has(fontFamily)) throw new Error('Ungültige Schriftart.')
+  assertRecord(layout.sidebarIcons)
+  const sidebarIcons: Record<string, string> = {}
+  for (const [label, icon] of Object.entries(layout.sidebarIcons)) {
+    if (!customizationNavigation.has(label) || typeof icon !== 'string' || !customizationIcons.has(icon)) {
+      throw new Error('Ungültiges Sidebar-Symbol.')
+    }
+    sidebarIcons[label] = icon
+  }
+
+  return {
+    themeId: value.themeId,
+    colors,
+    background: {
+      mode: background.mode,
+      gradientStart,
+      gradientEnd,
+      imageData: imageData as string | null,
+      blur,
+      opacity,
+    },
+    layout: {
+      sidebarWidth,
+      compactSidebar,
+      fontSize,
+      fontFamily,
+      radius,
+      transparency,
+      shadows,
+      glow,
+      animations,
+      animationSpeed,
+      sidebarIcons,
+    },
+  }
+}
+
+function validateCustomization(value: unknown): CustomizationSettings {
+  assertRecord(value)
+  if (JSON.stringify(value).length > 18 * 1024 * 1024) throw new Error('Die Customization-Einstellungen sind zu groß.')
+  if (!Array.isArray(value.profiles) || value.profiles.length < 1 || value.profiles.length > 16
+    || !Array.isArray(value.themes) || value.themes.length > 24
+    || !Array.isArray(value.palettes) || value.palettes.length > 24) {
+    throw new Error('Ungültige Customization-Listen.')
+  }
+  assertString(value.activeProfileId, 'Aktive Profil-ID', 100)
+  const validateNamedValues = (entry: unknown, label: string) => {
+    assertRecord(entry)
+    assertString(entry.id, `${label}-ID`, 100)
+    assertString(entry.name, label, 40)
+    if (!/^[\w-]+$/.test(entry.id) || !entry.name.trim()) throw new Error(`Ungültiger ${label}.`)
+    return { id: entry.id, name: entry.name.trim(), values: validateCustomizationValues(entry.values) }
+  }
+  const profiles = value.profiles.map((profile) => validateNamedValues(profile, 'Profil'))
+  const themes = value.themes.map((theme) => validateNamedValues(theme, 'Theme'))
+  if (!profiles.some((profile) => profile.id === value.activeProfileId)) throw new Error('Das aktive Designprofil wurde nicht gefunden.')
+  const palettes = value.palettes.map((palette: unknown) => {
+    assertRecord(palette)
+    assertString(palette.id, 'Paletten-ID', 100)
+    assertString(palette.name, 'Palettenname', 40)
+    if (!/^[\w-]+$/.test(palette.id) || !palette.name.trim()) throw new Error('Ungültige Farbpalette.')
+    return { id: palette.id, name: palette.name.trim(), colors: validateCustomizationColors(palette.colors) }
+  })
+  return { activeProfileId: value.activeProfileId, values: validateCustomizationValues(value.values), profiles, themes, palettes }
+}
+
 function validateSettings(value: unknown): Partial<AppSettings> {
   assertRecord(value)
-  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'notifications', 'autoCheckUpdates', 'telemetryEnabled', 'screenshotShortcut'])
+  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'customization', 'notifications', 'autoCheckUpdates', 'telemetryEnabled', 'screenshotShortcut'])
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) throw new Error(`Unbekannte Einstellung: ${key}.`)
   }
 
   const settings: Partial<AppSettings> = {}
+  if ('customization' in value) settings.customization = validateCustomization(value.customization)
   if ('accent' in value) {
     if (typeof value.accent !== 'string' || !colorPattern.test(value.accent)) throw new Error('Ungültige Akzentfarbe.')
     settings.accent = value.accent
