@@ -40,6 +40,14 @@ function formatMinutes(value) {
   return remainder ? `${hours} h ${remainder} min` : `${hours} h`;
 }
 
+function displayVersion(value) {
+  return String(value ?? '').replace(/^v(?=\d)/i, '');
+}
+
+function displayReleaseName(value) {
+  return String(value ?? '').replace(/\bv(?=\d+\.\d+\.\d+\b)/gi, '');
+}
+
 function animateCount(element, value) {
   const target = Number(value);
   const duration = 650;
@@ -126,10 +134,10 @@ function renderReleaseHistory(releases) {
 
     const version = document.createElement('span');
     version.className = 'badge';
-    version.textContent = release.version;
+    version.textContent = displayVersion(release.version);
 
     const heading = document.createElement('h2');
-    heading.textContent = release.name || release.version;
+    heading.textContent = displayReleaseName(release.name || release.version);
 
     article.append(version, heading);
     if (release.publishedAt) {
@@ -219,7 +227,7 @@ async function loadLatestRelease() {
 
     releaseTargets.forEach((node) => {
       const attr = node.dataset.release;
-      if (attr === 'version') node.textContent = release.version || 'Aktuell nicht verfügbar';
+      if (attr === 'version') node.textContent = displayVersion(release.version) || 'Aktuell nicht verfügbar';
       if (attr === 'link') node.href = release.htmlUrl || 'https://github.com/DarkRanger-wk/Vexlor-Control-Center/releases/latest';
       if (attr === 'installer') node.href = release.installer?.url || release.htmlUrl || 'https://github.com/DarkRanger-wk/Vexlor-Control-Center/releases/latest';
       if (attr === 'name') node.textContent = release.installer?.name || 'Windows Installer';
