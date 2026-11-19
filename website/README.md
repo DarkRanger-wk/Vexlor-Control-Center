@@ -41,6 +41,32 @@ The Pages project name `infos-vcc` maps to `https://infos-vcc.pages.dev`.
 
 If the Pages project already exists, skip its creation. Keep the D1 database ID and the Cloudflare account credentials private. No API secret is embedded in the desktop app.
 
+## Vexlor Super Admin
+
+The administration API requires server-side configuration and uses Cloudflare D1 plus a Cloudflare secret.
+
+1. Generate an Argon2id password hash interactively:
+
+   ```powershell
+   npm run admin:password
+   ```
+
+   The terminal does not echo the password and the script prints only `ADMIN_PASSWORD_HASH=<hash>`.
+
+2. In Cloudflare Pages, open **Settings > Environment variables** and add `ADMIN_PASSWORD_HASH` as an encrypted secret for Production and Preview. Do not add the clear-text password or hash to Git.
+
+3. Apply migrations:
+
+   ```powershell
+   npm run db:migrate:remote
+   ```
+
+4. The first login creates a local `bootstrap-super-admin` identity against the external hash. The hash can be rotated by replacing the Pages secret and redeploying; existing admin sessions should be revoked before a password rotation.
+
+Protected admin routes are under `/api/admin/*`. Critical actions require a valid HttpOnly session and server-side role/permission checks. Secret-code values are hashed in D1 and only returned once when they are created.
+
+The desktop app never contains the administrator password, session secret or password hash. It authenticates only through the backend.
+
 ## Telemetry and privacy
 
 The desktop app sends pseudonymous session events only after the user enables **Optionale Nutzungsstatistiken senden** in Settings. It queues events locally while offline and sends a deletion request when consent is revoked. Pages Functions validate identifiers, deduplicate event IDs, limit event volume per installation, cap server-calculated heartbeat duration and expose aggregate statistics only.

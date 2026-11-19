@@ -12,6 +12,8 @@ import { ToolsPage } from './ToolsPage'
 import { ScreenshotPage } from './ScreenshotPage'
 import ArcadePage from './ArcadePage.jsx'
 import CustomizationPage from './CustomizationPage.jsx'
+import AdminPage from './AdminPage.jsx'
+import RedeemCodePage from './RedeemCodePage.jsx'
 
 const defaultSettings: AppSettings = {
   accent: '#428bff',
@@ -344,6 +346,9 @@ export default function App() {
         onStopwatchChange={(stopwatch) => setTimerWidgetState((current) => ({ ...current, stopwatch }))}
       />
       break
+    case 'Codes einlösen':
+      pageContent = <RedeemCodePage />
+      break
     case 'Vexlor Arcade':
       pageContent = <ArcadePage
         gameSoundEnabled={settings.gameSoundEnabled}
@@ -355,6 +360,9 @@ export default function App() {
       break
     case 'Customization':
       pageContent = <CustomizationPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} />
+      break
+    case 'Vexlor Admin Panel':
+      pageContent = <AdminPage notifyError={notifyError} notifyInfo={notifyInfo} />
       break
     case 'Einstellungen':
       pageContent = <SettingsPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} onNavigate={selectPage} onUpdateChecked={(update) => setAvailableUpdate(update.updateAvailable && update.latestVersion ? { tag: update.latestVersion, hasInstaller: Boolean(update.downloadUrl) } : null)} />

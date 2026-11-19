@@ -28,6 +28,7 @@ type IconName =
   | 'minimize'
   | 'maximize'
   | 'close'
+  | 'eye'
 
 const paths: Record<IconName, ReactNode> = {
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /></>,
@@ -57,6 +58,7 @@ const paths: Record<IconName, ReactNode> = {
   minimize: <path d="M5 12h14" />,
   maximize: <rect x="5" y="5" width="14" height="14" rx="1" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
+  eye: <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></>,
 }
 
 export function Icon({

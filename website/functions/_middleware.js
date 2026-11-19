@@ -1,5 +1,9 @@
 export async function onRequest({ request, next }) {
-  if (request.method === 'OPTIONS' && new URL(request.url).pathname.startsWith('/api/')) {
+  const pathname = new URL(request.url).pathname
+  const isApi = pathname.startsWith('/api/')
+  const isAdminApi = pathname.startsWith('/api/admin/')
+  if (request.method === 'OPTIONS' && isApi) {
+    if (isAdminApi) return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } })
     return new Response(null, {
       status: 204,
       headers: {
@@ -19,10 +23,16 @@ export async function onRequest({ request, next }) {
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com https://github.com https://objects.githubusercontent.com; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
 
-  if (new URL(request.url).pathname.startsWith('/api/')) {
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  if (isApi) {
+    if (isAdminApi) {
+      headers.delete('Access-Control-Allow-Origin')
+      headers.delete('Access-Control-Allow-Methods')
+      headers.delete('Access-Control-Allow-Headers')
+    } else {
+      headers.set('Access-Control-Allow-Origin', '*');
+      headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    }
     headers.set('Cache-Control', 'no-store');
   }
 

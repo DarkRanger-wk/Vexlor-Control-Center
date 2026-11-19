@@ -219,6 +219,10 @@ export interface UpdateInfo {
 }
 
 export interface VccApi {
+  adminRequest(path: string, options?: { method?: 'GET' | 'POST'; body?: string }): Promise<{
+    status: number
+    body: Record<string, unknown>
+  }>
   getSystemSnapshot(): Promise<SystemSnapshot>
   listProcesses(): Promise<ProcessEntry[]>
   getNetworkSnapshot(): Promise<NetworkSnapshot>

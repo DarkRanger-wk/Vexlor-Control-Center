@@ -32,6 +32,8 @@ const maxImageBytes = 5 * 1024 * 1024
 const customizationColorKeys = ['accent', 'background', 'sidebar', 'card', 'menu', 'button', 'border', 'text', 'muted'] as const
 const customizationIcons = new Set(['dashboard', 'monitor', 'library', 'performance', 'network', 'tools', 'arcade', 'target', 'clock', 'crown', 'bolt', 'launch', 'screenshot', 'copy', 'save', 'zoomIn', 'zoomOut', 'settings', 'refresh', 'cpu', 'memory', 'windows', 'spark', 'arrow'])
 const customizationNavigation = new Set(['Dashboard', 'System Monitor', 'Spielebibliothek', 'Performance', 'Network Center', 'Gaming Tools', 'Vexlor Arcade', 'Screenshot Tool', 'Customization', 'Einstellungen', 'Über Vexlor'])
+const adminApiBaseUrl = 'https://infos-vcc.pages.dev'
+let adminSessionCookie: string | null = null
 
 function register(
   channel: string,
@@ -278,6 +280,56 @@ async function chooseImage(title: string): Promise<string | null> {
   return `data:${mime};base64,${readFileSync(imagePath).toString('base64')}`
 }
 
+async function requestAdminApi(value: unknown): Promise<{ status: number; body: Record<string, unknown> }> {
+  assertRecord(value)
+  assertString(value.path, 'Admin-API-Pfad', 2048)
+  const method = value.method ?? 'GET'
+  if (method !== 'GET' && method !== 'POST') throw new Error('Ungültige Admin-API-Methode.')
+  if (value.body !== undefined) assertString(value.body, 'Admin-API-Daten', 65536)
+  if (method === 'GET' && value.body !== undefined) throw new Error('GET-Anfragen dürfen keinen Inhalt haben.')
+
+  const url = new URL(value.path, adminApiBaseUrl)
+  if (url.origin !== adminApiBaseUrl || !url.pathname.startsWith('/api/admin/')) {
+    throw new Error('Nicht autorisierter Admin-API-Pfad.')
+  }
+
+  const headers = new Headers({ Accept: 'application/json' })
+  if (value.body !== undefined) headers.set('Content-Type', 'application/json')
+  if (adminSessionCookie) headers.set('Cookie', adminSessionCookie)
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: value.body,
+    signal: AbortSignal.timeout(15000),
+  })
+
+  const responseText = await response.text()
+  let responseBody: unknown
+  try {
+    responseBody = JSON.parse(responseText)
+  } catch {
+    responseBody = { error: 'Die Antwort des Admin-Servers ist ungültig.' }
+  }
+  if (typeof responseBody !== 'object' || responseBody === null || Array.isArray(responseBody)) {
+    responseBody = { error: 'Die Antwort des Admin-Servers ist ungültig.' }
+  }
+  assertRecord(responseBody)
+
+  const isLogin = url.pathname === '/api/admin/auth/login' && method === 'POST'
+  if (isLogin && response.ok) {
+    const cookie = response.headers.get('set-cookie')
+    const match = cookie?.match(/(?:^|,\s*)vcc_admin_session=([^;,\s]+)/)
+    if (!match) throw new Error('Der Admin-Server hat keine gültige Sitzung ausgegeben.')
+    adminSessionCookie = `vcc_admin_session=${match[1]}`
+  } else if (response.status === 401) {
+    adminSessionCookie = null
+  } else if (url.pathname === '/api/admin/auth/me' && method === 'POST' && response.ok) {
+    adminSessionCookie = null
+  }
+
+  return { status: response.status, body: responseBody }
+}
+
 function registerIpcHandlers(): void {
   register('system:get-snapshot', (...args) => {
     assertNoArgs(args)
@@ -424,6 +476,10 @@ function registerIpcHandlers(): void {
     assertRecord(value)
     assertString(value.shortcut, 'Screenshot-Tastenkombination', 100)
     return setScreenshotShortcut(value.shortcut)
+  })
+  register('admin:request', (value, ...args) => {
+    assertNoArgs(args)
+    return requestAdminApi(value)
   })
   register('timer-widget:update-state', (value) => updateTimerWidgetState(value))
   register('external:open-email', async (...args) => {

@@ -1,0 +1,66 @@
+[
+  {
+    "version": "v0.2.1",
+    "name": "Vexlor Control Center 0.2.1",
+    "changes": [
+      "Passwortgeschütztes Admin-Panel; das Passwort ist ausschließlich für den Admin-Bereich.",
+      "Admin-Sitzungen und API-Anfragen über eine geprüfte Electron-Schnittstelle abgesichert.",
+      "Code-Einlösungen serverseitig begrenzt und lokalen App-Installationen zugeordnet.",
+      "Changelogs und Release-Informationen werden automatisch aus GitHub Releases geladen."
+    ]
+  },
+  {
+    "version": "v0.2.0",
+    "name": "Vexlor Control Center 0.2.0",
+    "publishedAt": "2026-11-18T18:45:55Z",
+    "changes": ["Fehlerbehebungen und Verbesserungen"]
+  },
+  {
+    "version": "v0.1.7",
+    "name": "Vexlor Control Center 0.1.7",
+    "publishedAt": "2026-11-17T17:58:37Z",
+    "changes": ["Runner, Clicker und Puzzle sind jetzt spielbar"]
+  },
+  {
+    "version": "v0.1.6",
+    "name": "Vexlor Control Center 0.1.6",
+    "publishedAt": "2026-11-17T17:20:04Z",
+    "changes": [
+      "Arcade mit Vexlor Space Shooter hinzugefügt",
+      "Lokale Highscores und Erfolge ergänzt"
+    ]
+  },
+  {
+    "version": "v0.1.5",
+    "name": "Vexlor Control Center 0.1.5",
+    "publishedAt": "2026-11-17T14:50:28Z",
+    "changes": ["Vexlor-Website und optionale Telemetrie veröffentlicht"]
+  },
+  {
+    "version": "v0.1.4",
+    "name": "Vexlor Control Center 0.1.4",
+    "publishedAt": "2026-11-16T17:59:51Z",
+    "changes": ["Der Installationsort bleibt bei Updates erhalten"]
+  },
+  {
+    "version": "v0.1.3",
+    "name": "Vexlor Control Center 0.1.3",
+    "publishedAt": "2026-11-16T17:50:11Z",
+    "changes": ["Screenshot-Werkzeug und schwebendes Timer-Fenster hinzugefügt"]
+  },
+  {
+    "version": "v0.1.2",
+    "name": "Vexlor Control Center 0.1.2",
+    "publishedAt": "2026-11-15",
+    "changes": [
+      "GitHub-Veröffentlichungen automatisiert",
+      "Unbeabsichtigte Veröffentlichung beim Erstellen des Installers deaktiviert"
+    ]
+  },
+  {
+    "version": "v0.1.1",
+    "name": "Vexlor Control Center 0.1.1",
+    "publishedAt": "2026-11-15",
+    "changes": []
+  }
+]

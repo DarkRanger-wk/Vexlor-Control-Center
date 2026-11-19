@@ -5,6 +5,28 @@ const emptyStatsNode = document.querySelector('[data-empty-stats]');
 const chartNode = document.querySelector('[data-usage-chart]');
 const chartEmptyNode = document.querySelector('[data-chart-empty]');
 
+function initializeRevealAnimations() {
+  const targets = document.querySelectorAll(
+    'main .section-header, main .feature-card, main .stat-card, main .download-panel, main .faq-item, main .changelog-item, main .info-card, main .legal-card, main .chart-panel, main .page-header, footer .footer-grid > div',
+  );
+  if (!targets.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+
+  targets.forEach((element, index) => {
+    element.classList.add('reveal-on-scroll');
+    element.style.setProperty('--reveal-delay', `${(index % 4) * 70}ms`);
+  });
+
+  const observer = new IntersectionObserver((entries, currentObserver) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('is-visible');
+      currentObserver.unobserve(entry.target);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -24px 0px' });
+
+  targets.forEach((element) => observer.observe(element));
+}
+
 function formatNumber(value) {
   return Number(value).toLocaleString('de-DE');
 }
@@ -57,6 +79,138 @@ function renderChart(series, hasData) {
   }
 }
 
+function cleanReleaseNotes(markdown) {
+  return markdown
+    .replace(/<[^>]*>/g, '')
+    .split(/\r?\n/)
+    .map((line) => line
+      .replace(/^\s*\[[^\]]+\]:\s*\S+.*$/, '')
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/https?:\/\/\S+/gi, '')
+      .replace(/^\s{0,3}#{1,6}\s*/, '')
+      .replace(/^\s*[-*+]\s+/, '')
+      .replace(/^\s*\d+[.)]\s+/, '')
+      .replace(/(\*\*|__|~~|`)/g, '')
+      .trim())
+    .filter((line) => line && !/^full changelog\b/i.test(line));
+}
+
+function localizeReleaseChange(change) {
+  const translations = {
+    'feat: publish vexlor website and opt-in telemetry': 'Vexlor-Website und optionale Telemetrie veröffentlicht',
+    'fix: preserve install location during updates': 'Der Installationsort bleibt bei Updates erhalten',
+    'feat: add screenshot and floating timer tools': 'Screenshot-Werkzeug und schwebendes Timer-Fenster hinzugefügt',
+    'ci: automate github releases': 'GitHub-Veröffentlichungen automatisiert',
+    'fix: disable implicit publishing during installer build': 'Unbeabsichtigte Veröffentlichung beim Erstellen des Installers deaktiviert',
+  };
+  return translations[change.toLowerCase()] || change;
+}
+
+function renderReleaseHistory(releases) {
+  const container = document.querySelector('[data-release-history]');
+  if (!container) return;
+  container.replaceChildren();
+
+  if (!releases.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = 'Es sind noch keine veröffentlichten Changelogs vorhanden.';
+    container.append(empty);
+    return;
+  }
+
+  releases.forEach((release) => {
+    const article = document.createElement('article');
+    article.className = 'changelog-item';
+
+    const version = document.createElement('span');
+    version.className = 'badge';
+    version.textContent = release.version;
+
+    const heading = document.createElement('h2');
+    heading.textContent = release.name || release.version;
+
+    article.append(version, heading);
+    if (release.publishedAt) {
+      const date = document.createElement('time');
+      date.className = 'release-date';
+      date.dateTime = release.publishedAt;
+      const parsedDate = new Date(release.publishedAt);
+      date.textContent = Number.isNaN(parsedDate.getTime())
+        ? ''
+        : parsedDate.toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' });
+      if (date.textContent) article.append(date);
+    }
+
+    const notes = cleanReleaseNotes(release.notes || '');
+    const changes = Array.isArray(release.changes)
+      ? cleanReleaseNotes(release.changes.join('\n')).map(localizeReleaseChange)
+      : [];
+    const displayedNotes = notes.length ? notes : changes;
+    if (displayedNotes.length) {
+      const list = document.createElement('ul');
+      list.className = 'release-notes';
+      displayedNotes.forEach((note) => {
+        const item = document.createElement('li');
+        item.textContent = note;
+        list.append(item);
+      });
+      article.append(list);
+    } else {
+      const empty = document.createElement('p');
+      empty.className = 'section-copy';
+      empty.textContent = 'Für diese Version wurden keine Änderungsnotizen veröffentlicht.';
+      article.append(empty);
+    }
+
+    container.append(article);
+  });
+}
+
+async function loadReleaseHistory() {
+  const container = document.querySelector('[data-release-history]');
+  if (!container) return;
+
+  const savedHistoryPromise = fetch('/release-history.json')
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Saved release history unavailable (HTTP ${response.status})`);
+      const releases = await response.json();
+      if (!Array.isArray(releases)) throw new Error('Invalid saved release history');
+      return releases;
+    })
+    .catch((error) => {
+      console.warn('Saved release history unavailable:', error);
+      return [];
+    });
+
+  try {
+    const response = await fetch('/api/releases?history=2');
+    if (!response.ok) throw new Error(`Release history unavailable (HTTP ${response.status})`);
+    const releases = await response.json();
+    if (!Array.isArray(releases)) throw new Error('Invalid release history response');
+    const savedReleases = await savedHistoryPromise;
+    const savedByVersion = new Map(savedReleases.map((release) => [release.version, release]));
+    renderReleaseHistory(releases.map((release) => {
+      if (cleanReleaseNotes(release.notes || '').length) return release;
+      const savedRelease = savedByVersion.get(release.version);
+      return savedRelease ? { ...release, changes: savedRelease.changes } : release;
+    }));
+  } catch (error) {
+    console.warn('Release history unavailable:', error);
+    const releases = await savedHistoryPromise;
+    if (releases.length) {
+      renderReleaseHistory(releases);
+    } else {
+      container.replaceChildren();
+      const message = document.createElement('p');
+      message.className = 'empty-state';
+      message.textContent = 'Die Changelogs sind momentan nicht erreichbar. Bitte versuche es später erneut.';
+      container.append(message);
+    }
+  }
+}
+
 async function loadLatestRelease() {
   try {
     const response = await fetch('/api/release/latest');
@@ -74,8 +228,8 @@ async function loadLatestRelease() {
     const changelogNode = document.querySelector('[data-changelog]');
     if (changelogNode) {
       changelogNode.replaceChildren();
-      const notes = typeof release.notes === 'string' ? release.notes.split(/\r?\n/).filter(Boolean).slice(0, 6) : [];
-      for (const note of notes.length ? notes : ['Für dieses Release sind keine Notizen hinterlegt.']) {
+      const notes = typeof release.notes === 'string' ? cleanReleaseNotes(release.notes).slice(0, 6) : [];
+      for (const note of notes.length ? notes : ['Für dieses Release wurden keine Änderungsnotizen veröffentlicht.']) {
         const item = document.createElement('li');
         item.textContent = note.replace(/^\s*[#*-]+\s*/, '');
         changelogNode.append(item);
@@ -148,5 +302,7 @@ document.querySelectorAll('[data-period]').forEach((button) => {
   });
 });
 
+initializeRevealAnimations();
 void loadLatestRelease();
+void loadReleaseHistory();
 void loadStats();

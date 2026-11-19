@@ -14,6 +14,7 @@ const navigation: { label: string; icon: IconName }[] = [
   { label: 'Performance', icon: 'performance' },
   { label: 'Network Center', icon: 'network' },
   { label: 'Gaming Tools', icon: 'tools' },
+  { label: 'Codes einlösen', icon: 'spark' },
   { label: 'Vexlor Arcade', icon: 'arcade' },
   { label: 'Screenshot Tool', icon: 'screenshot' },
 ]
@@ -21,6 +22,7 @@ const navigation: { label: string; icon: IconName }[] = [
 const preferences: { label: string; icon: IconName }[] = [
   { label: 'Customization', icon: 'spark' },
   { label: 'Einstellungen', icon: 'settings' },
+  { label: 'Vexlor Admin Panel', icon: 'settings' },
   { label: 'Über Vexlor', icon: 'arrow' },
 ]
 
