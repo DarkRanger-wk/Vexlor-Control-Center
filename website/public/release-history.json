@@ -2,6 +2,7 @@
   {
     "version": "v0.2.1",
     "name": "Vexlor Control Center 0.2.1",
+    "publishedAt": "2026-11-19T18:20:27Z",
     "changes": [
       "Passwortgeschütztes Admin-Panel; das Passwort ist ausschließlich für den Admin-Bereich.",
       "Admin-Sitzungen und API-Anfragen über eine geprüfte Electron-Schnittstelle abgesichert.",

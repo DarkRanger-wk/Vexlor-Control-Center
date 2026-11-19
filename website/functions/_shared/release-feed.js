@@ -39,6 +39,7 @@ function getReleaseNotes(content) {
     .filter((line) => line
       && !/^full changelog\b/i.test(line)
       && !/^no content\.?$/i.test(line)
+      && !/^Änderungen$/i.test(line)
       && !/^Änderungen in Version .+:\s*$/i.test(line))
     .join('\n');
 }
