@@ -45,15 +45,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "v${{ steps.version.outputs.version }}"
-          $releaseInfo = gh release view "$tag" --json tagName 2>&1
-          $releaseStatus = $LASTEXITCODE
-          if ($releaseStatus -eq 0) {
+          $releases = gh release list --limit 1000 --json tagName | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not list existing releases.' }
+          if ($releases.tagName -contains $tag) {
             "should_publish=false" >> $env:GITHUB_OUTPUT
             Write-Host "Release $tag already exists; skipping publication."
-          } elseif (($releaseInfo -join "`n") -match '(?i)(HTTP 404|not found)') {
-            "should_publish=true" >> $env:GITHUB_OUTPUT
           } else {
-            throw "Could not check release $tag`: $($releaseInfo -join "`n")"
+            "should_publish=true" >> $env:GITHUB_OUTPUT
           }
 
       - name: Set up Node.js
