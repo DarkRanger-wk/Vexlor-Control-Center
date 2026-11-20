@@ -82,9 +82,10 @@ jobs:
           $tag = "v${{ steps.version.outputs.version }}"
           $previousTag = git tag --list 'v*' --sort=-version:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
           if (-not $previousTag) { throw 'Das vorherige Versionskennzeichen konnte nicht ermittelt werden.' }
-          $changes = git log --no-merges --format='- %s' "$previousTag..$sourceCommit"
+          $changes = @(git log --no-merges --format='%s' "$previousTag..$sourceCommit")
           if ($LASTEXITCODE -ne 0) { throw 'Die Änderungen für die Versionshinweise konnten nicht ermittelt werden.' }
-          if (-not $changes) { $changes = '- Fehlerbehebungen und Verbesserungen' }
-          $notes = "Änderungen in Version ${{ steps.version.outputs.version }}:`n`n$changes"
+          $changes = @($changes | ForEach-Object { '- ' + ($_ -replace '^[a-z]+:\s*', '') })
+          if (-not $changes) { $changes = @('- Fehlerbehebungen und Verbesserungen') }
+          $notes = @("Änderungen in Version ${{ steps.version.outputs.version }}:"; ""; $changes) -join "`n"
           gh release create "$tag" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --target "$sourceCommit" --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --notes "$notes"
           if ($LASTEXITCODE -ne 0) { throw 'Die GitHub-Veröffentlichung ist fehlgeschlagen.' }
