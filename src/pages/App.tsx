@@ -147,6 +147,17 @@ export default function App() {
   }, [settingsLoaded, notifyInfo])
 
   useEffect(() => {
+    const handleSettingsUpdated = (event: Event) => {
+      const updatedSettings = (event as CustomEvent<AppSettings>).detail
+      if (!updatedSettings || typeof updatedSettings !== 'object') return
+      settingsRef.current = updatedSettings
+      setSettings(updatedSettings)
+    }
+    window.addEventListener('vcc-settings-updated', handleSettingsUpdated)
+    return () => window.removeEventListener('vcc-settings-updated', handleSettingsUpdated)
+  }, [])
+
+  useEffect(() => {
     const unsubscribeCaptured = window.vcc.onScreenshotCaptured((image) => {
       setHotkeyScreenshot(image)
       setPage('Screenshot Tool')

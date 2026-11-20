@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import AdminTicketMailbox from './AdminTicketMailbox.jsx'
+import { AnnouncementsSection, CodesSection, RolesSection } from './AdminManagementSections.jsx'
 import '../styles/admin.css'
 
 async function adminRequest(path, options = {}) {
@@ -19,7 +20,7 @@ const sections = [
   ['dashboard', 'Admin Dashboard', 'monitor'],
   ['users', 'Benutzerverwaltung', 'library'],
   ['codes', 'Code-Verwaltung', 'screenshot'],
-  ['secret', 'Secret Codes', 'spark'],
+  ['announcements', 'Code-Ankündigungen', 'spark'],
   ['premium', 'Premium-Verwaltung', 'crown'],
   ['app', 'App-Verwaltung', 'settings'],
   ['updates', 'Update-Verwaltung', 'refresh'],
@@ -63,9 +64,9 @@ export default function AdminPage({ notifyError, notifyInfo }) {
     if (section === 'dashboard' || section === 'stats') {
       adminRequest('/api/admin/dashboard').then((body) => { if (active) setDashboard(body) }).catch((caught) => { if (active) setError(caught.message) })
     } else if (section === 'users') {
-      adminRequest('/api/admin/users').then((body) => { if (active) setUsers(body.users ?? []) }).catch((caught) => { if (active) setError(caught.message) })
-    } else if (section === 'codes' || section === 'secret') {
-      adminRequest(`/api/admin/codes${section === 'secret' ? '?secret=1' : ''}`).then((body) => { if (active) setCodes(body.codes ?? []) }).catch((caught) => { if (active) setError(caught.message) })
+      adminRequest('/api/admin/users?limit=100').then((body) => { if (active) setUsers(body.users ?? []) }).catch((caught) => { if (active) setError(caught.message) })
+    } else if (section === 'codes') {
+      adminRequest('/api/admin/codes').then((body) => { if (active) setCodes(body.codes ?? []) }).catch((caught) => { if (active) setError(caught.message) })
     } else if (section === 'support') {
       adminRequest('/api/admin/support').then((body) => { if (active) setSupport(body.requests ?? []) }).catch((caught) => { if (active) setError(caught.message) })
     }
@@ -132,9 +133,13 @@ export default function AdminPage({ notifyError, notifyInfo }) {
       ['Erstellte Codes', stats?.createdCodes ?? 0, 'screenshot'],
       ['Aktive Codes', stats?.activeCodes ?? 0, 'spark'],
       ['Eingelöste Codes', stats?.redeemedCodes ?? 0, 'target'],
+      ['Installationen', stats?.installations ?? 0, 'windows'],
+      ['App-Starts', stats?.appStarts ?? 0, 'launch'],
+      ['Downloads', stats?.githubDownloads, 'save'],
     ]
     return <div className="admin-dashboard">
-      <div className="admin-stat-grid">{cards.map(([label, value, icon]) => <article className="admin-stat-card panel" key={label}><span><Icon name={icon} /></span><small>{label}</small><strong>{value.toLocaleString('de-DE')}</strong></article>)}</div>
+      <div className="admin-stat-grid">{cards.map(([label, value, icon]) => <article className="admin-stat-card panel" key={label}><span><Icon name={icon} /></span><small>{label}</small><strong>{value == null ? '—' : Number(value).toLocaleString('de-DE')}</strong></article>)}</div>
+      {dashboard?.downloadsError && <p className="admin-info-message" role="status">{dashboard.downloadsError}</p>}
       <div className="admin-dashboard-grid">
         <section className="panel admin-event-panel"><h2>Letzte Administrator-Aktionen</h2>{dashboard?.recentAudit?.length ? <div className="admin-event-list">{dashboard.recentAudit.map((entry) => <div key={entry.id}><span>{entry.action}</span><small>{new Date(entry.created_at * 1000).toLocaleString('de-DE')}</small><b>{entry.result}</b></div>)}</div> : <p>Keine Administrator-Aktionen vorhanden.</p>}</section>
         <section className="panel admin-event-panel"><h2>Sicherheitsereignisse</h2>{dashboard?.recentSecurityEvents?.length ? <div className="admin-event-list">{dashboard.recentSecurityEvents.map((entry) => <div key={entry.id}><span>{entry.event_type}</span><small>{new Date(entry.created_at * 1000).toLocaleString('de-DE')}</small></div>)}</div> : <p>Keine Sicherheitsereignisse vorhanden.</p>}</section>
@@ -143,50 +148,18 @@ export default function AdminPage({ notifyError, notifyInfo }) {
   }
 
   function UsersSection({ users, reload }) {
+    const [search, setSearch] = useState('')
+    const visibleUsers = users.filter((user) => `${user.display_name} ${user.email ?? ''} ${user.id}`.toLowerCase().includes(search.trim().toLowerCase()))
     const act = async (id, action) => {
       if (!window.confirm(action === 'disable' ? 'Benutzerkonto wirklich deaktivieren?' : 'Diese Benutzeraktion ausführen?')) return
-      await fetch('https://infos-vcc.pages.dev/api/admin/users', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action }),
-      }).then(async (response) => {
-        if (!response.ok) throw new Error((await response.json()).error || 'Benutzeraktion fehlgeschlagen.')
+      await adminRequest('/api/admin/users', { method: 'POST', body: JSON.stringify({ id, action }) }).then(async () => {
         await reload()
       }).catch((error) => window.alert(error instanceof Error ? error.message : 'Benutzeraktion fehlgeschlagen.'))
     }
     return <div className="admin-table-card panel">
-      <div className="admin-table-heading"><h2>Registrierte Benutzer</h2><span>{users.length} Einträge</span></div>
-      {users.length ? <div className="admin-table-wrap"><table><thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Letzte Aktivität</th><th>Aktion</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.id}</small></td><td>{user.role}</td><td><span className={`admin-status ${user.status}`}>{user.status}</span></td><td>{user.last_active_at ? new Date(user.last_active_at * 1000).toLocaleString('de-DE') : '—'}</td><td><div className="admin-row-actions"><button onClick={() => void act(user.id, user.status === 'blocked' ? 'unblock' : 'block')}>{user.status === 'blocked' ? 'Entsperren' : 'Sperren'}</button><button className="danger" onClick={() => void act(user.id, 'disable')}>Deaktivieren</button></div></td></tr>)}</tbody></table></div> : <p className="admin-empty">Keine Benutzer gefunden.</p>}
-    </div>
-  }
-
-  function CodesSection({ codes, secret }) {
-    const [creating, setCreating] = useState(false)
-    const [message, setMessage] = useState('')
-    const createCode = async () => {
-      setCreating(true)
-      setMessage('')
-      try {
-        const response = await fetch('https://infos-vcc.pages.dev/api/admin/codes', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'create', count: 1, reward: { type: 'feature', value: 'beta_access' }, description: 'Vexlor Administrator-Code', secret }),
-        })
-        const body = await response.json()
-        if (!response.ok) throw new Error(body.error || 'Code konnte nicht erstellt werden.')
-        setMessage(secret ? `Secret-Code erstellt: ${body.codes[0].code}` : `Code erstellt: ${body.codes[0].code}`)
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : 'Code konnte nicht erstellt werden.')
-      } finally {
-        setCreating(false)
-      }
-    }
-    return <div className="admin-table-card panel">
-      <div className="admin-table-heading"><h2>{secret ? 'Secret Codes' : 'Einlösecodes'}</h2><button className="primary-button" onClick={() => void createCode()} disabled={creating}>{creating ? 'Wird erstellt …' : 'Code erstellen'}</button></div>
-      {message && <div className="admin-info-message">{message}</div>}
-      {codes.length ? <div className="admin-table-wrap"><table><thead><tr><th>Code-Referenz</th><th>Belohnung</th><th>Status</th><th>Einlösungen</th><th>Ablauf</th></tr></thead><tbody>{codes.map((code) => <tr key={code.id}><td><strong>{code.code_hint}</strong><small>{code.id}</small></td><td>{code.reward_type}</td><td><span className={`admin-status ${code.status}`}>{code.status}</span></td><td>{code.current_redemptions} / {code.max_redemptions}</td><td>{code.expires_at ? new Date(code.expires_at * 1000).toLocaleString('de-DE') : 'Kein Ablauf'}</td></tr>)}</tbody></table></div> : <p className="admin-empty">Keine Codes vorhanden.</p>}
+      <div className="admin-table-heading"><h2>Registrierte Benutzer</h2><span>{visibleUsers.length} von {users.length} Einträgen</span></div>
+      <input className="admin-user-search" type="search" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Nach Benutzername oder ID suchen" aria-label="Benutzer suchen" />
+      {visibleUsers.length ? <div className="admin-table-wrap"><table><thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Letzte Aktivität</th><th>Aktion</th></tr></thead><tbody>{visibleUsers.map((user) => <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.id}</small></td><td>{user.role}</td><td><span className={`admin-status ${user.status}`}>{user.status}</span></td><td>{user.last_active_at ? new Date(user.last_active_at * 1000).toLocaleString('de-DE') : '—'}</td><td><div className="admin-row-actions"><button onClick={() => void act(user.id, user.status === 'blocked' ? 'unblock' : 'block')}>{user.status === 'blocked' ? 'Entsperren' : 'Sperren'}</button><button className="danger" onClick={() => void act(user.id, 'disable')}>Deaktivieren</button></div></td></tr>)}</tbody></table></div> : <p className="admin-empty">Keine Benutzer gefunden.</p>}
     </div>
   }
 
@@ -235,7 +208,7 @@ export default function AdminPage({ notifyError, notifyInfo }) {
         link.click()
         URL.revokeObjectURL(url)
       }
-      return <section className="panel admin-table-card"><div className="admin-table-heading"><h2>Geschützte Datenbank-Backups</h2><button className="primary-button" onClick={() => void downloadBackup()}>JSON-Backup exportieren</button></div><p className="admin-empty">Der Export enthält keine Administrator-Passwörter, Sitzungstokens oder Secret-Codes im Klartext.</p></section>
+      return <section className="panel admin-table-card"><div className="admin-table-heading"><h2>Geschützte Datenbank-Backups</h2><button className="primary-button" onClick={() => void downloadBackup()}>JSON-Backup exportieren</button></div><p className="admin-empty">Der Export enthält keine Administrator-Passwörter, Sitzungstokens oder IP-Daten.</p></section>
     }
     if (section === 'updates') {
       return <section className="panel admin-table-card"><div className="admin-table-heading"><h2>Aktuelle Release-Information</h2></div><dl className="admin-key-values"><dt>Version</dt><dd>{summary?.latestVersion ?? summary?.version ?? 'Nicht bereitgestellt'}</dd><dt>Installer</dt><dd>{summary?.downloadUrl ? 'Bereitgestellt' : 'Nicht bereitgestellt'}</dd><dt>Hinweise</dt><dd>{summary?.notes || 'Keine Versionshinweise vorhanden.'}</dd></dl></section>
@@ -256,21 +229,24 @@ export default function AdminPage({ notifyError, notifyInfo }) {
   }
 
   const stats = dashboard?.stats
+  const visibleSections = sections.filter(([id]) => id !== 'roles' || admin.roleId === 'super_admin')
   return <div className="admin-page">
     <aside className="admin-navigation panel">
       <div className="admin-nav-heading"><Icon name="spark" /><div><strong>Vexlor Admin</strong><small>{admin.roleName}</small></div></div>
-      <nav>{sections.map(([id, label, icon]) => <button key={id} className={section === id ? 'active' : ''} onClick={() => setSection(id)}><Icon name={icon} /><span>{label}</span></button>)}</nav>
+      <nav>{visibleSections.map(([id, label, icon]) => <button key={id} className={section === id ? 'active' : ''} onClick={() => setSection(id)}><Icon name={icon} /><span>{label}</span></button>)}</nav>
       <button className="admin-logout" onClick={() => void logout()}><Icon name="close" /> Abmelden</button>
     </aside>
     <main className="admin-main">
       <header className="admin-main-header"><div><span className="section-kicker">ADMINISTRATION</span><h1>{sections.find(([id]) => id === section)?.[1] ?? 'Admin Dashboard'}</h1></div><span className="admin-secure-badge"><i /> SERVERGEPRÜFT</span></header>
       {error && <div className="admin-error" role="alert">{error}</div>}
       {(section === 'dashboard' || section === 'stats') && <AdminDashboard stats={stats} dashboard={dashboard} />}
-      {section === 'users' && <UsersSection users={users} reload={() => adminRequest('/api/admin/users').then((body) => setUsers(body.users ?? []))} />}
-      {(section === 'codes' || section === 'secret') && <CodesSection codes={codes} secret={section === 'secret'} />}
+      {section === 'users' && <UsersSection users={users} reload={() => adminRequest('/api/admin/users?limit=100').then((body) => setUsers(body.users ?? []))} />}
+      {section === 'codes' && <CodesSection codes={codes} request={adminRequest} reload={() => adminRequest('/api/admin/codes').then((body) => setCodes(body.codes ?? []))} />}
+      {section === 'announcements' && <AnnouncementsSection request={adminRequest} />}
+      {section === 'roles' && <RolesSection request={adminRequest} currentAdminId={admin.id} />}
       {section === 'support' && <SupportSection requests={support} />}
       {section === 'ticket-mailbox' && <AdminTicketMailbox notifyInfo={notifyInfo} />}
-      {!['dashboard', 'stats', 'users', 'codes', 'secret', 'support', 'ticket-mailbox'].includes(section) && <GenericAdminSection section={section} />}
+      {!['dashboard', 'stats', 'users', 'codes', 'announcements', 'roles', 'support', 'ticket-mailbox'].includes(section) && <GenericAdminSection section={section} />}
     </main>
   </div>
 }

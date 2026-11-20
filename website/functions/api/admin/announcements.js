@@ -25,11 +25,16 @@ export async function onRequestPost({ request, env }) {
   }
   const title = typeof body?.title === 'string' ? body.title.trim().slice(0, 120) : '';
   const text = typeof body?.body === 'string' ? body.body.trim().slice(0, 4000) : '';
-  const kind = ['info', 'warning', 'maintenance', 'feature'].includes(body?.kind) ? body.kind : 'info';
+  const kind = ['info', 'warning', 'maintenance', 'feature', 'code'].includes(body?.kind) ? body.kind : 'info';
   if (!title || !text) return Response.json({ error: 'Titel und Nachricht sind erforderlich.' }, { status: 400 });
   const active = body?.active === false ? 0 : 1;
-  const startsAt = body?.startsAt == null ? null : Number(body.startsAt);
-  const expiresAt = body?.expiresAt == null ? null : Number(body.expiresAt);
+  const startsAt = body?.startsAt == null || body.startsAt === '' ? null : Number(body.startsAt);
+  const expiresAt = body?.expiresAt == null || body.expiresAt === '' ? null : Number(body.expiresAt);
+  if ((startsAt !== null && !Number.isSafeInteger(startsAt))
+    || (expiresAt !== null && !Number.isSafeInteger(expiresAt))
+    || (startsAt !== null && expiresAt !== null && expiresAt <= startsAt)) {
+    return Response.json({ error: 'Ungültiger Veröffentlichungs- oder Ablaufzeitpunkt.' }, { status: 400 });
+  }
   if (action === 'update' && id) {
     await env.DB.prepare(`
       UPDATE announcements

@@ -323,7 +323,7 @@ export default function CustomizationPage({ settings, updateSettings, notifyErro
             </div>
             <div className="customization-profile-list">{customization.profiles.map((profile) => <div className={`customization-profile${profile.id === customization.activeProfileId ? ' active' : ''}`} key={profile.id}>
               <button className="customization-profile-select" onClick={() => applyProfile(profile)}><strong>{profile.name}</strong><small>{profile.id === customization.activeProfileId ? 'Aktives Profil' : profile.values.themeId}</small></button>
-              <button className="customization-icon-button" title="Umbenennen" onClick={() => renameProfile(profile)}>Name</button>
+              <button className="customization-icon-button" aria-label={`Profil ${profile.name} umbenennen`} title="Profil umbenennen" onClick={() => renameProfile(profile)}>Umbenennen</button>
               <button className="customization-icon-button danger" title="Profil löschen" onClick={() => deleteProfile(profile)}>Löschen</button>
             </div>)}</div>
           </section>}

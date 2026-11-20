@@ -1,25 +1,61 @@
-.redeem-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; }
+.redeem-page { display: flex; flex-direction: column; gap: 14px; --reward-accent: var(--blue); }
+.redeem-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 4px; }
 .redeem-header h1 { margin-top: 8px; font-size: 34px; }
-.redeem-header h1 span { color: var(--blue); }
-.redeem-header p { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.redeem-header h1 span { color: var(--reward-accent); }
+.redeem-header p { max-width: 700px; margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.redeem-version-pill { display: inline-flex; min-height: 25px; align-items: center; margin-top: 12px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--reward-accent), transparent 68%); border-radius: 14px; background: color-mix(in srgb, var(--reward-accent), transparent 91%); color: var(--reward-accent); font: 600 9px var(--mono); }
 .redeem-layout { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(320px, 1.15fr); gap: 14px; }
-.redeem-card { display: flex; flex-direction: column; gap: 10px; min-height: 260px; padding: 20px; }
-.redeem-icon { display: grid; width: 44px; height: 44px; margin-bottom: 5px; place-items: center; border: 1px solid color-mix(in srgb, var(--blue), transparent 58%); border-radius: 12px; background: color-mix(in srgb, var(--blue), transparent 88%); color: var(--blue); }
+.redeem-card, .redeem-rewards, .redeem-announcements, .redeem-catalog { min-width: 0; padding: 18px; }
+.redeem-card { display: flex; flex-direction: column; gap: 10px; }
+.redeem-icon { display: grid; width: 44px; height: 44px; margin-bottom: 2px; place-items: center; border: 1px solid color-mix(in srgb, var(--reward-accent), transparent 58%); border-radius: 12px; background: color-mix(in srgb, var(--reward-accent), transparent 88%); color: var(--reward-accent); }
 .redeem-icon svg { width: 22px; height: 22px; }
 .redeem-card label { color: var(--text); font-size: 11px; }
 .redeem-card input { height: 44px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; background: var(--bg); color: var(--text); font: 600 12px var(--mono); letter-spacing: .8px; }
-.redeem-card input:focus { border-color: var(--blue); }
+.redeem-card input:focus { border-color: var(--reward-accent); }
+.redeem-card > p { color: var(--muted); font-size: 10px; line-height: 1.55; }
 .redeem-card .primary-button { min-height: 42px; margin-top: 4px; }
 .redeem-message, .redeem-error { padding: 9px 10px; border-radius: 7px; font-size: 10px; line-height: 1.5; }
 .redeem-message { border: 1px solid rgba(65,219,160,.23); background: rgba(65,219,160,.07); color: #95ddc2; }
 .redeem-error { border: 1px solid rgba(245,113,125,.24); background: rgba(142,44,55,.10); color: #f1a1a8; }
-.redeem-history { min-height: 260px; padding: 18px; }
-.redeem-history-list { display: flex; flex-direction: column; }
-.redeem-history-list > div { display: flex; align-items: center; gap: 10px; min-height: 58px; border-top: 1px solid var(--line); }
-.redeem-history-list > div > span { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--blue), transparent 88%); color: var(--blue); }
-.redeem-history-list svg { width: 15px; height: 15px; }
-.redeem-history-list div div { display: flex; flex-direction: column; gap: 4px; }
-.redeem-history-list strong { font-size: 10px; }
-.redeem-history-list small { color: var(--muted); font-size: 9px; }
-.redeem-empty { display: grid; min-height: 190px; place-items: center; align-content: center; color: var(--muted); font-size: 11px; }
-.redeem-empty svg { width: 24px; height: 24px; margin-bottom: 8px; }
+.redeem-premium-status { display: flex; align-items: center; gap: 7px; margin: 8px 0; color: #e7c37a; font-size: 10px; }
+.redeem-premium-status svg { width: 15px; height: 15px; }
+.redeem-reward-list { display: flex; flex-direction: column; }
+.redeem-reward-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 7px 0; border-top: 1px solid var(--line); }
+.redeem-reward-item.equipped { border-left: 2px solid var(--item-accent, var(--reward-accent)); padding-left: 8px; }
+.redeem-reward-mark, .redeem-announcement-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--item-accent, var(--reward-accent)), transparent 88%); color: var(--item-accent, var(--reward-accent)); }
+.redeem-reward-mark svg, .redeem-announcement-icon svg { width: 15px; height: 15px; }
+.redeem-reward-item > div { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.redeem-reward-item strong { font-size: 10px; overflow-wrap: anywhere; }
+.redeem-reward-item small { color: var(--muted); font-size: 9px; }
+.redeem-reward-item .admin-secondary-button { white-space: nowrap; }
+.redeem-announcement-list { display: flex; flex-direction: column; }
+.redeem-announcement-list article { display: flex; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.redeem-announcement-list article > div { min-width: 0; }
+.redeem-announcement-list strong { font-size: 11px; }
+.redeem-announcement-list p { margin: 5px 0; color: var(--muted); font-size: 10px; line-height: 1.6; white-space: pre-wrap; }
+.redeem-announcement-list small { color: var(--muted); font-size: 9px; }
+.redeem-muted { color: var(--muted); font-size: 10px; }
+.redeem-code-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.redeem-code-item { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--card), transparent 15%); }
+.redeem-code-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.redeem-code-heading > div { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+.redeem-code-heading strong { font-size: 11px; overflow-wrap: anywhere; }
+.redeem-code-heading code { color: var(--reward-accent); font: 600 11px var(--mono); overflow-wrap: anywhere; }
+.redeem-code-status { flex: 0 0 auto; padding: 4px 7px; border: 1px solid var(--line); border-radius: 12px; color: var(--muted); font-size: 8px; }
+.redeem-code-status.active { border-color: rgba(65,219,160,.25); color: #84ddb9; }
+.redeem-code-status.expired, .redeem-code-status.redeemed { border-color: rgba(245,113,125,.25); color: #f1a1a8; }
+.redeem-code-reward { margin-top: 10px; color: var(--text); font-size: 10px; font-weight: 600; }
+.redeem-code-item > p { margin-top: 7px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.redeem-code-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
+.redeem-code-footer small { color: var(--muted); font-size: 8px; }
+.redeem-code-footer button { flex: 0 0 auto; padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--reward-accent), transparent 65%); border-radius: 6px; background: transparent; color: var(--reward-accent); font-size: 8px; cursor: pointer; }
+.redeem-empty { display: grid; min-height: 100px; place-items: center; align-content: center; color: var(--muted); font-size: 10px; text-align: center; }
+.redeem-empty svg { width: 22px; height: 22px; margin-bottom: 7px; }
+@media (max-width: 900px) {
+  .redeem-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .redeem-header h1 { font-size: 28px; }
+  .redeem-code-grid { grid-template-columns: 1fr; }
+  .redeem-code-footer { align-items: flex-start; flex-direction: column; }
+}

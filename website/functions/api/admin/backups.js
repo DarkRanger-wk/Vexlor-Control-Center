@@ -10,6 +10,7 @@ export async function onRequestGet({ request, env }) {
     codes,
     redemptions,
     premium,
+    userRewards,
     announcements,
     appSettings,
     features,
@@ -22,12 +23,13 @@ export async function onRequestGet({ request, env }) {
       FROM users
     `).all(),
     env.DB.prepare(`
-      SELECT id, code_hint, reward_type, reward_value, description, secret, status, expires_at,
+      SELECT id, code_hint, code_name, public_code, reward_type, reward_value, description, status, expires_at,
              max_redemptions, current_redemptions, created_at, updated_at
       FROM redeem_codes
     `).all(),
     env.DB.prepare('SELECT id, code_id, user_id, install_id, reward_type, reward_value, redeemed_at FROM code_redemptions').all(),
     env.DB.prepare('SELECT * FROM premium_subscriptions').all(),
+    env.DB.prepare('SELECT * FROM user_rewards').all(),
     env.DB.prepare('SELECT * FROM announcements').all(),
     env.DB.prepare('SELECT * FROM app_settings').all(),
     env.DB.prepare('SELECT * FROM feature_flags').all(),
@@ -46,6 +48,7 @@ export async function onRequestGet({ request, env }) {
       codes: codes.results ?? [],
       redemptions: redemptions.results ?? [],
       premium: premium.results ?? [],
+      userRewards: userRewards.results ?? [],
       announcements: announcements.results ?? [],
       appSettings: appSettings.results ?? [],
       features: features.results ?? [],

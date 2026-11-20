@@ -7,17 +7,35 @@ import {
   beginArcadeRound,
   completeArcadeRound,
   createArcadeProfile,
+  toggleArcadeFavorite,
   validateArcadeProfile,
 } from '../services/arcade-profile.mjs'
+import { ArcadeExtraGame } from './ArcadeExtraGames'
+import { ArcadeMoreGame, MORE_ARCADE_GAMES } from './ArcadeMoreGames'
 import { ClickerGame, PuzzleGame, RunnerGame } from './ArcadeMiniGames'
 import '../styles/arcade.css'
 
 const gameCatalog = [
-  { id: 'space-shooter', title: 'Vexlor Space Shooter', description: 'Weiche Gegnerwellen aus, sammle Verbesserungen und verteidige deinen Punkterekord.', status: 'PLAYABLE', color: 'blue' },
-  { id: 'runner', title: 'Vexlor Runner', description: 'Springe und rutsche durch einen immer schnelleren Neon-Parcours.', status: 'PLAYABLE', color: 'cyan' },
-  { id: 'clicker', title: 'Vexlor Clicker', description: 'Sammle Energie, kaufe Verbesserungen und automatisiere deine Produktion.', status: 'PLAYABLE', color: 'violet' },
-  { id: 'puzzle', title: 'Vexlor Puzzle', description: 'Kombiniere Zahlenkacheln und knacke das 2048er-Logikrätsel.', status: 'PLAYABLE', color: 'green' },
+  { id: 'space-shooter', title: 'Vexlor Space Shooter', description: 'Weiche Gegnerwellen aus, sammle Verbesserungen und verteidige deinen Punkterekord.', status: 'PLAYABLE', color: 'blue', category: 'Arcade' },
+  { id: 'runner', title: 'Vexlor Runner', description: 'Springe und rutsche durch einen immer schnelleren Neon-Parcours.', status: 'PLAYABLE', color: 'cyan', category: 'Arcade' },
+  { id: 'clicker', title: 'Vexlor Clicker', description: 'Sammle Energie, kaufe Verbesserungen und automatisiere deine Produktion.', status: 'PLAYABLE', color: 'violet', category: 'Strategie' },
+  { id: 'puzzle', title: 'Vexlor Puzzle', description: 'Kombiniere Zahlenkacheln und knacke das 2048er-Logikrätsel.', status: 'PLAYABLE', color: 'green', category: 'Puzzle' },
+  { id: 'snake', title: 'Vexlor Snake', description: 'Sammle Energiepunkte, wachse mit jedem Treffer und weiche deinem eigenen Schwanz aus.', status: 'PLAYABLE', color: 'green', category: 'Arcade', isNew: true },
+  { id: 'memory', title: 'Vexlor Memory', description: 'Finde alle Symbolpaare mit möglichst wenigen Zügen.', status: 'PLAYABLE', color: 'violet', category: 'Puzzle', isNew: true },
+  { id: 'minesweeper', title: 'Vexlor Minesweeper', description: 'Räume das Minenfeld mithilfe der Zahlenhinweise sicher.', status: 'PLAYABLE', color: 'cyan', category: 'Puzzle', isNew: true },
+  { id: 'tic-tac-toe', title: 'Vexlor Tic-Tac-Toe', description: 'Fordere die Vexlor-KI heraus und bilde eine Dreierreihe.', status: 'PLAYABLE', color: 'blue', category: 'Strategie', isNew: true },
+  ...MORE_ARCADE_GAMES.map((game) => ({ ...game, status: 'PLAYABLE', isNew: true })),
 ]
+
+const gameGroups = [
+  { id: 'all', label: 'Alle Spiele' },
+  { id: 'new', label: 'Neu' },
+  { id: 'popular', label: 'Beliebt' },
+  { id: 'recent', label: 'Zuletzt gespielt' },
+  { id: 'favorites', label: 'Favoriten' },
+]
+const gameCategories = ['Alle Kategorien', 'Arcade', 'Puzzle', 'Strategie', 'Sonstiges']
+const popularFallback = ['space-shooter', 'runner', 'puzzle']
 
 const keyMap = {
   ArrowUp: 'up',
@@ -50,6 +68,9 @@ function errorMessage(error, fallback) {
 export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 0.35 }) {
   const [profile, setProfile] = useState(createArcadeProfile)
   const [view, setView] = useState('hub')
+  const [gameSearch, setGameSearch] = useState('')
+  const [activeGroup, setActiveGroup] = useState('all')
+  const [activeCategory, setActiveCategory] = useState('Alle Kategorien')
   const [profileReady, setProfileReady] = useState(false)
   const [storageError, setStorageError] = useState('')
   const [volume, setVolume] = useState(0.35)
@@ -120,8 +141,8 @@ export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 
     persistProfile(addArcadePlayTime(profileRef.current, seconds))
   }, [persistProfile])
 
-  const finishRound = useCallback((score, unsavedSeconds, gameId = 'space-shooter') => {
-    persistProfile(completeArcadeRound(profileRef.current, score, unsavedSeconds, gameId))
+  const finishRound = useCallback((score, unsavedSeconds, gameId = 'space-shooter', won = false) => {
+    persistProfile(completeArcadeRound(profileRef.current, score, unsavedSeconds, gameId, won))
   }, [persistProfile])
 
   const updateProfile = useCallback((update) => {
@@ -164,9 +185,33 @@ export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 
   if (view === 'runner') return <RunnerGame {...miniGameProps} />
   if (view === 'clicker') return <ClickerGame {...miniGameProps} />
   if (view === 'puzzle') return <PuzzleGame {...miniGameProps} />
+  if (['snake', 'memory', 'minesweeper', 'tic-tac-toe'].includes(view)) {
+    return <ArcadeExtraGame gameId={view} profile={profile} {...miniGameProps} />
+  }
+  if (MORE_ARCADE_GAMES.some((game) => game.id === view)) {
+    return <ArcadeMoreGame gameId={view} profile={profile} {...miniGameProps} />
+  }
 
   const unlocked = new Set(profile.achievements)
   const recentGames = profile.recentGames.map((id) => gameCatalog.find((game) => game.id === id)).filter(Boolean)
+  const normalizedSearch = gameSearch.trim().toLocaleLowerCase('de-DE')
+  const popularGames = gameCatalog
+    .map((game) => ({ game, plays: profile.gameRecords[game.id]?.roundsPlayed ?? 0 }))
+    .sort((a, b) => b.plays - a.plays || a.game.title.localeCompare(b.game.title, 'de'))
+    .filter(({ plays }) => plays > 0)
+    .slice(0, 4)
+    .map(({ game }) => game.id)
+  const visibleGames = gameCatalog.filter((game) => {
+    const matchesSearch = !normalizedSearch
+      || `${game.title} ${game.description} ${game.category}`.toLocaleLowerCase('de-DE').includes(normalizedSearch)
+    const matchesCategory = activeCategory === 'Alle Kategorien' || game.category === activeCategory
+    const matchesGroup = activeGroup === 'all'
+      || (activeGroup === 'new' && game.isNew)
+      || (activeGroup === 'popular' && (popularGames.length ? popularGames : popularFallback).includes(game.id))
+      || (activeGroup === 'recent' && profile.recentGames.includes(game.id))
+      || (activeGroup === 'favorites' && profile.favorites.includes(game.id))
+    return matchesSearch && matchesCategory && matchesGroup
+  })
 
   return <section className="arcade-page">
     <header className="arcade-welcome">
@@ -195,14 +240,29 @@ export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 
         <div><div className="section-kicker">DEINE SPIELE</div><h2>Arcade-Auswahl</h2></div>
         <span className="arcade-local-tag"><Icon name="spark" /> 100 % LOKAL</span>
       </div>
+      <div className="arcade-game-browser">
+        <label className="arcade-search">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" value={gameSearch} onChange={(event) => setGameSearch(event.target.value)} placeholder="Spiele suchen …" aria-label="Arcade-Spiele suchen" />
+        </label>
+        <div className="arcade-filter-row" aria-label="Spiele gruppieren" role="group">
+          {gameGroups.map((group) => <button key={group.id} type="button" className={activeGroup === group.id ? 'active' : ''} onClick={() => setActiveGroup(group.id)}>{group.label}</button>)}
+        </div>
+        <div className="arcade-filter-row category-filters" aria-label="Nach Kategorie filtern" role="group">
+          {gameCategories.map((category) => <button key={category} type="button" className={activeCategory === category ? 'active' : ''} onClick={() => setActiveCategory(category)}>{category}</button>)}
+        </div>
+      </div>
       <div className="arcade-game-grid">
-        {gameCatalog.map((game) => <GameCard
+        {visibleGames.map((game) => <GameCard
           key={game.id}
           game={game}
           record={getGameRecord(game.id, profile)}
+          favorite={profile.favorites.includes(game.id)}
+          onFavorite={profileReady ? () => updateProfile((current) => toggleArcadeFavorite(current, game.id)) : undefined}
           onPlay={profileReady ? () => setView(game.id) : undefined}
         />)}
       </div>
+      {visibleGames.length === 0 && <div className="arcade-empty-results">Keine Spiele für diese Suche oder Auswahl gefunden.</div>}
     </section>
 
     <div className="arcade-lower-grid">
@@ -245,7 +305,7 @@ function StatCard({ label, value, detail, icon, color }) {
   </article>
 }
 
-function GameCard({ game, record, onPlay }) {
+function GameCard({ game, record, favorite, onFavorite, onPlay }) {
   const playable = game.status === 'PLAYABLE'
   const readyToPlay = playable && typeof onPlay === 'function'
   return <article className={`arcade-game-card ${game.color}${playable ? ' playable' : ' upcoming'}`}>
@@ -253,9 +313,10 @@ function GameCard({ game, record, onPlay }) {
       <ArcadeArtwork gameId={game.id} />
       <span className={`arcade-status${playable ? ' available' : ''}`}>{playable ? 'JETZT SPIELBAR' : game.status}</span>
       {playable && <span className="arcade-cover-score"><Icon name="performance" /> {record.label} {record.value}</span>}
+      {playable && <button type="button" className={`arcade-favorite-toggle${favorite ? ' active' : ''}`} onClick={onFavorite} disabled={!onFavorite} aria-label={`${favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}: ${game.title}`} aria-pressed={favorite}>★</button>}
     </div>
     <div className="arcade-card-copy">
-      <div className="arcade-card-title"><h3>{game.title}</h3>{playable && <span className="arcade-new-badge">SPIELBAR</span>}</div>
+      <div className="arcade-card-title"><h3>{game.title}</h3>{game.isNew ? <span className="arcade-new-badge">NEU</span> : <span className="arcade-category-badge">{game.category}</span>}</div>
       <p>{game.description}</p>
       <button type="button" className={playable ? 'primary-button arcade-play-button' : 'arcade-upcoming-button'} onClick={readyToPlay ? onPlay : undefined} disabled={!readyToPlay}>
         {playable ? readyToPlay ? <>Spiel starten <Icon name="arrow" /></> : 'Profil wird geladen …' : <>Demnächst verfügbar <span>·</span></>}
@@ -268,7 +329,8 @@ function getGameRecord(gameId, profile) {
   if (gameId === 'space-shooter') return { label: 'REKORD', value: profile.highScore.toLocaleString('de-DE') }
   if (gameId === 'runner') return { label: 'REKORD', value: profile.runnerBestScore.toLocaleString('de-DE') }
   if (gameId === 'clicker') return { label: 'ENERGIE', value: profile.clicker.energy.toLocaleString('de-DE') }
-  return { label: 'REKORD', value: profile.puzzle.bestTile.toLocaleString('de-DE') }
+  if (gameId === 'puzzle') return { label: 'REKORD', value: profile.puzzle.bestTile.toLocaleString('de-DE') }
+  return { label: 'REKORD', value: (profile.gameRecords?.[gameId]?.bestScore ?? 0).toLocaleString('de-DE') }
 }
 
 function getRecentDetail(gameId, profile) {

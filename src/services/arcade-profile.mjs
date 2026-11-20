@@ -1,4 +1,12 @@
-export const ARCADE_GAMES = ['space-shooter', 'runner', 'clicker', 'puzzle']
+export const ARCADE_GAMES = [
+  'space-shooter', 'runner', 'clicker', 'puzzle',
+  'snake', 'memory', 'minesweeper', 'tic-tac-toe',
+  'pong', 'breakout', 'flappy', 'doodle-jump', 'bubble-shooter', 'neon-racer', 'whack-a-mole', 'reaction-time', 'aim-trainer',
+  'stack-tower', 'tetris', 'word-scramble', 'word-guess', 'lights-out', 'sudoku', 'sokoban', 'maze-runner',
+  'tower-of-hanoi', 'number-slide', 'connect-four', 'chess', 'battleship', 'reversi', 'checkers', 'mastermind', 'simon-says',
+  'quick-math', 'typing-speed', 'color-match', 'rock-paper-scissors',
+  'quiz-challenge', 'geography-quiz', 'flag-quiz',
+]
 
 export const ARCADE_ACHIEVEMENTS = [
   { id: 'first-flight', title: 'Erster Start', description: 'Starte deine erste Runde.', icon: 'launch' },
@@ -34,6 +42,8 @@ export function createArcadeProfile() {
     },
     achievements: [],
     recentGames: [],
+    favorites: [],
+    gameRecords: Object.fromEntries(ARCADE_GAMES.map((gameId) => [gameId, { bestScore: 0, roundsPlayed: 0, wins: 0 }])),
     soundVolume: 0.35,
   }
 }
@@ -54,6 +64,8 @@ export function validateArcadeProfile(value) {
   const defaults = createArcadeProfile()
   const clicker = profile.clicker ?? defaults.clicker
   const puzzle = profile.puzzle ?? defaults.puzzle
+  const favorites = profile.favorites ?? defaults.favorites
+  const suppliedRecords = profile.gameRecords ?? defaults.gameRecords
   if (!isCounter(profile.highScore)
     || (profile.lastScore !== null && !isCounter(profile.lastScore))
     || !isCounter(profile.roundsPlayed)
@@ -62,6 +74,10 @@ export function validateArcadeProfile(value) {
     || !isCounter(profile.runnerRuns ?? 0)
     || !Array.isArray(profile.achievements)
     || !Array.isArray(profile.recentGames)
+    || !Array.isArray(favorites)
+    || typeof suppliedRecords !== 'object'
+    || suppliedRecords === null
+    || Array.isArray(suppliedRecords)
     || typeof profile.soundVolume !== 'number'
     || !Number.isFinite(profile.soundVolume)
     || profile.soundVolume < 0
@@ -74,6 +90,23 @@ export function validateArcadeProfile(value) {
   if (profile.recentGames.some((id) => typeof id !== 'string' || !ARCADE_GAMES.includes(id))) {
     throw new Error('Das Arcade-Profil enthält ein unbekanntes Spiel.')
   }
+  if (favorites.some((id) => typeof id !== 'string' || !ARCADE_GAMES.includes(id))) {
+    throw new Error('Das Arcade-Profil enthält ein unbekanntes Lieblingsspiel.')
+  }
+  const gameRecords = Object.fromEntries(ARCADE_GAMES.map((gameId) => {
+    const record = suppliedRecords[gameId] ?? defaults.gameRecords[gameId]
+    if (typeof record !== 'object' || record === null || Array.isArray(record)
+      || !isCounter(record.bestScore)
+      || !isCounter(record.roundsPlayed)
+      || !isCounter(record.wins)
+      || record.wins > record.roundsPlayed) {
+      throw new Error('Das Arcade-Profil enthält ungültige Spielstatistiken.')
+    }
+    return [gameId, { bestScore: record.bestScore, roundsPlayed: record.roundsPlayed, wins: record.wins }]
+  }))
+  gameRecords['space-shooter'].bestScore = Math.max(gameRecords['space-shooter'].bestScore, profile.highScore)
+  gameRecords.runner.bestScore = Math.max(gameRecords.runner.bestScore, profile.runnerBestScore ?? 0)
+  gameRecords.puzzle.bestScore = Math.max(gameRecords.puzzle.bestScore, puzzle.bestScore)
   if (typeof clicker !== 'object' || clicker === null || Array.isArray(clicker)
     || !isCounter(clicker.energy)
     || !isCounter(clicker.lifetimeEnergy)
@@ -127,6 +160,8 @@ export function validateArcadeProfile(value) {
     },
     achievements: [...new Set(profile.achievements)],
     recentGames: [...new Set(profile.recentGames)].slice(0, 8),
+    favorites: [...new Set(favorites)],
+    gameRecords,
     soundVolume: profile.soundVolume,
   }
 }
@@ -144,10 +179,15 @@ export function applyArcadeAchievements(profile) {
 export function beginArcadeRound(profile, gameId = 'space-shooter') {
   if (!ARCADE_GAMES.includes(gameId)) throw new Error('Unbekanntes Arcade-Spiel.')
   const recentGames = [gameId, ...profile.recentGames.filter((id) => id !== gameId)].slice(0, 8)
+  const gameRecords = {
+    ...profile.gameRecords,
+    [gameId]: { ...profile.gameRecords[gameId], roundsPlayed: profile.gameRecords[gameId].roundsPlayed + 1 },
+  }
   return applyArcadeAchievements({
     ...profile,
     roundsPlayed: profile.roundsPlayed + 1,
     runnerRuns: profile.runnerRuns + Number(gameId === 'runner'),
+    gameRecords,
     puzzle: gameId === 'puzzle'
       ? { ...profile.puzzle, gamesPlayed: profile.puzzle.gamesPlayed + 1, won: false, gameOver: false }
       : profile.puzzle,
@@ -160,17 +200,35 @@ export function addArcadePlayTime(profile, seconds) {
   return applyArcadeAchievements({ ...profile, totalPlayTimeSeconds: profile.totalPlayTimeSeconds + seconds })
 }
 
-export function completeArcadeRound(profile, score, unsavedSeconds = 0, gameId = 'space-shooter') {
+export function toggleArcadeFavorite(profile, gameId) {
+  if (!ARCADE_GAMES.includes(gameId)) throw new Error('Unbekanntes Arcade-Spiel.')
+  const favorites = profile.favorites.includes(gameId)
+    ? profile.favorites.filter((favorite) => favorite !== gameId)
+    : [...profile.favorites, gameId]
+  return { ...profile, favorites }
+}
+
+export function completeArcadeRound(profile, score, unsavedSeconds = 0, gameId = 'space-shooter', won = false) {
   if (!isCounter(score) || !isCounter(unsavedSeconds)) {
     throw new Error('Punktzahl und Spielzeit müssen positive ganze Zahlen sein.')
   }
-  if (gameId !== 'space-shooter' && gameId !== 'runner') throw new Error('Unbekanntes Arcade-Spiel.')
+  if (!ARCADE_GAMES.includes(gameId) || typeof won !== 'boolean') throw new Error('Unbekanntes Arcade-Spiel.')
+  const previousRecord = profile.gameRecords[gameId]
+  const gameRecords = {
+    ...profile.gameRecords,
+    [gameId]: {
+      ...previousRecord,
+      bestScore: Math.max(previousRecord.bestScore, score),
+      wins: previousRecord.wins + Number(won),
+    },
+  }
   return applyArcadeAchievements({
     ...profile,
     highScore: gameId === 'space-shooter' ? Math.max(profile.highScore, score) : profile.highScore,
     lastScore: gameId === 'space-shooter' ? score : profile.lastScore,
     runnerBestScore: gameId === 'runner' ? Math.max(profile.runnerBestScore, score) : profile.runnerBestScore,
     totalPlayTimeSeconds: profile.totalPlayTimeSeconds + unsavedSeconds,
+    gameRecords,
   })
 }
 
@@ -200,6 +258,14 @@ export function recordPuzzleProgress(profile, state) {
       won: state.won,
       gameOver: state.gameOver,
       active: state.active,
+    },
+    gameRecords: {
+      ...profile.gameRecords,
+      puzzle: {
+        ...profile.gameRecords.puzzle,
+        bestScore: Math.max(profile.gameRecords.puzzle.bestScore, state.score),
+        wins: profile.gameRecords.puzzle.wins + Number(state.won && !puzzle.won),
+      },
     },
   }
 }

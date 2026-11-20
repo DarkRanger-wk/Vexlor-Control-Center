@@ -63,7 +63,11 @@ The administration API requires server-side configuration and uses Cloudflare D1
 
 4. The first login creates a local `bootstrap-super-admin` identity against the external hash. The hash can be rotated by replacing the Pages secret and redeploying; existing admin sessions should be revoked before a password rotation.
 
-Protected admin routes are under `/api/admin/*`. Critical actions require a valid HttpOnly session and server-side role/permission checks. Secret-code values are hashed in D1 and only returned once when they are created.
+Protected admin routes are under `/api/admin/*`. Critical actions require a valid HttpOnly session and server-side role/permission checks. Redeem codes are hashed for verification and their public values are exposed by the public catalogue; code values are never written to logs. There is no Secret-Code category or creation path. Custom team roles and permissions can be changed only by the Super Administrator. The dashboard reads aggregate download counts from the public GitHub Releases API; if GitHub is unavailable, the dashboard reports that statistic as unavailable without hiding the D1-backed metrics.
+
+The migration `migrations/0004_public_codes_and_rewards.sql` must be applied after the existing migrations. It permanently deletes legacy Secret-Code rows and their redemption records, backfills public codes and reward inventory, and drops the obsolete `secret` column. Apply it locally before development with `npm run db:migrate:local`; apply it to production only as part of an approved deployment with `npm run db:migrate:remote`.
+
+The app's `/api/codes/redeem` and `/api/codes/rewards` calls use the installation identity already protected by Electron Windows DPAPI. The API ignores client-supplied installation and user identifiers, enforces one redemption per installation, and persists earned rewards separately so deleting a code does not revoke an already granted reward.
 
 The desktop app never contains the administrator password, session secret or password hash. It authenticates only through the backend.
 
