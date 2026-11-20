@@ -81,14 +81,45 @@ export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 
 
   useEffect(() => {
     let active = true
-    window.vcc.getArcadeProfile()
-      .then((savedProfile) => {
-        const validProfile = validateArcadeProfile(savedProfile)
+    const initializeProfile = async () => {
+      const localProfile = validateArcadeProfile(await window.vcc.getArcadeProfile())
+      let validProfile = localProfile
+      let syncWarning = ''
+      try {
+        const remote = await window.vcc.ticketRequest('/api/arcade/profile')
+        if (remote.status < 200 || remote.status >= 300) {
+          throw new Error(remote.body?.error || 'Die Arcade-Datenbank ist nicht erreichbar.')
+        }
+        if (remote.body.profile !== null) {
+          validProfile = validateArcadeProfile(remote.body.profile)
+        } else {
+          const created = await window.vcc.ticketRequest('/api/arcade/profile', {
+            method: 'POST',
+            body: JSON.stringify({ profile: localProfile }),
+          })
+          if (created.status < 200 || created.status >= 300) {
+            throw new Error(created.body?.error || 'Das Arcade-Profil konnte nicht synchronisiert werden.')
+          }
+        }
+      } catch (error) {
+        syncWarning = `Arcade-Datenbank nicht synchronisiert; lokaler Spielstand bleibt nutzbar. ${errorMessage(error, 'Unbekannter Fehler')}`
+      }
+
+      try {
+        await window.vcc.saveArcadeProfile(validProfile)
+      } catch (error) {
+        syncWarning = `Lokaler Arcade-Spielstand konnte nicht aktualisiert werden. ${errorMessage(error, 'Unbekannter Fehler')}`
+      }
+      return { validProfile, syncWarning }
+    }
+
+    initializeProfile()
+      .then(({ validProfile, syncWarning }) => {
         if (!active) return
         profileRef.current = validProfile
         setProfile(validProfile)
         setVolume(gameSoundEnabled ? gameSoundVolume : 0)
-        setStorageError('')
+        setStorageError(syncWarning)
         setProfileReady(true)
       })
       .catch((error) => {
@@ -117,7 +148,17 @@ export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 
 
     const write = writeQueueRef.current
       .catch(() => undefined)
-      .then(() => window.vcc.saveArcadeProfile(validProfile))
+      .then(async () => {
+        const savedProfile = await window.vcc.saveArcadeProfile(validProfile)
+        const response = await window.vcc.ticketRequest('/api/arcade/profile', {
+          method: 'POST',
+          body: JSON.stringify({ profile: savedProfile }),
+        })
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error(response.body?.error || 'Die Arcade-Datenbank konnte nicht aktualisiert werden.')
+        }
+        return savedProfile
+      })
     writeQueueRef.current = write
     write.then((savedProfile) => {
       if (!mountedRef.current || revision !== writeRevisionRef.current) return
@@ -218,7 +259,7 @@ export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 
       <div>
         <div className="eyebrow"><span className="eyebrow-line" /> VEXLOR ARCADE</div>
         <h1>Dein nächstes <span>Level.</span></h1>
-        <p className="welcome-subtitle">Kurze Pause, große Rekorde. Deine Spiele und Erfolge bleiben lokal auf diesem PC.</p>
+        <p className="welcome-subtitle">Kurze Pause, große Rekorde. Deine Spielstände bleiben lokal verfügbar und werden mit der Vexlor-Datenbank synchronisiert.</p>
       </div>
       <div className="arcade-online-badge"><span /> OHNE INTERNET SPIELBAR</div>
     </header>
@@ -227,7 +268,7 @@ export default function ArcadePage({ gameSoundEnabled = true, gameSoundVolume = 
       <span>{storageError}</span>
       <button type="button" className="arcade-link-button" onClick={resetProfile}>Lokales Profil zurücksetzen</button>
     </div>}
-    {!profileReady && <p className="arcade-loading" role="status">Lokales Arcade-Profil wird geladen …</p>}
+    {!profileReady && <p className="arcade-loading" role="status">Arcade-Profil wird geladen …</p>}
 
     <section className="arcade-stats" aria-label="Deine Arcade-Statistik">
       <StatCard label="PERSÖNLICHER REKORD" value={profile.highScore.toLocaleString('de-DE')} detail="Punkte · Space Shooter" icon="target" color="blue" />

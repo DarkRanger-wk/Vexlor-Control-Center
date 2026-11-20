@@ -349,7 +349,7 @@ async function requestTicketApi(value: unknown): Promise<{ status: number; body:
   const url = new URL(value.path, ticketApiBaseUrl)
   if (url.origin !== ticketApiBaseUrl
     || (url.pathname !== '/api/tickets' && !url.pathname.startsWith('/api/tickets/')
-      && !['/api/codes/redeem', '/api/codes/rewards'].includes(url.pathname))) {
+      && !['/api/codes/redeem', '/api/codes/rewards', '/api/arcade/profile'].includes(url.pathname))) {
     throw new Error('Nicht autorisierter Installations-API-Pfad.')
   }
   if (!hasTicketIdentity() && method === 'GET' && url.pathname === '/api/tickets') {
