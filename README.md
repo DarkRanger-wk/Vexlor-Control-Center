@@ -29,11 +29,15 @@ npm run dist
 - Offline legal pages. Privacy and terms describe the current implementation and still need legal review before public distribution.
 - Update checks use the fixed public GitHub repository `DarkRanger-wk/Vexlor-Control-Center`. Checks run at startup and every six hours when enabled in Settings, or manually from the top bar. The top-bar button always checks the latest release and, when available, downloads and installs its verified Windows `.exe` after the user's click.
 - Optional telemetry is off by default. After enabling it in Settings, the app queues pseudonymous app/session timestamps, version and platform locally while offline and sends them to the Vexlor website; disabling it requests deletion of the associated telemetry records.
+- **Support & Hilfe** ermöglicht Fehlermeldungen, technischen Support, Fragen, Feedback, Ticketverlauf, Antworten und begrenzte Dateianhänge. Tickets sind an eine App-Installation gebunden; eine normale App-Anmeldung ist nicht erforderlich. Das zufällige lokale Ticket-Geheimnis wird mit Windows DPAPI verschlüsselt und verbleibt im Electron-Hauptprozess. Teamantworten aktualisieren die Kennzeichnung ungelesener Tickets und können während der App-Laufzeit eine Benachrichtigung auslösen.
+- Das geschützte Admin Panel enthält ein **Ticket-Postfach** zum Suchen, Filtern, Zuweisen und Bearbeiten von Tickets. Teammitglieder mit `support.read` können Verläufe einsehen; Änderungen und Antworten erfordern `support.manage`. Interne Notizen sind von benutzersichtbaren Nachrichten getrennt und werden niemals über Benutzer-Ticket-Endpunkte ausgeliefert.
 - `website/` is an independent Cloudflare Pages project with Pages Functions, D1-backed aggregate stats and live GitHub release information. See [website/README.md](./website/README.md) for local development and deployment.
 
 ## Data and network
 
 Games, notes and settings are stored in `vcc-data.json` inside Electron's per-user application data folder. System and process data are read locally and kept in memory. Optional telemetry transmits only pseudonymous app/session metadata after the user enables it. A manual or enabled automatic update check contacts the fixed public GitHub repository and sends ordinary connection metadata such as the IP address.
+
+Ticketdaten werden in der unter `website/` konfigurierten Cloudflare-D1-Datenbank gespeichert. Die Migration `0003_ticket_system.sql` ergänzt Installationsidentitäten, Tickets, Nachrichten und begrenzte Binäranhänge. Erlaubt sind PNG-, JPEG-, WebP-, TXT- und PDF-Dateien bis zu je 512 KB (insgesamt 1 MB und drei Dateien pro Nachricht); Anhänge werden ausschließlich über authentifizierte Ticket-APIs ausgeliefert. Vor Tests lokal mit `npm run db:migrate:local` und vor einem Deployment remote mit `npm run db:migrate:remote` im Ordner `website/` migrieren.
 
 ## Update setup
 

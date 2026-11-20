@@ -43,6 +43,7 @@ export interface ArcadeProfile {
 }
 
 export interface AppSettings {
+  username: string
   accent: string
   theme: 'navy' | 'midnight' | 'graphite'
   animations: boolean
@@ -219,6 +220,11 @@ export interface UpdateInfo {
 }
 
 export interface VccApi {
+  hasTicketIdentity(): Promise<boolean>
+  ticketRequest(path: string, options?: { method?: 'GET' | 'POST'; body?: string }): Promise<{
+    status: number
+    body: Record<string, unknown>
+  }>
   adminRequest(path: string, options?: { method?: 'GET' | 'POST'; body?: string }): Promise<{
     status: number
     body: Record<string, unknown>

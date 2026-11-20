@@ -67,6 +67,16 @@ Protected admin routes are under `/api/admin/*`. Critical actions require a vali
 
 The desktop app never contains the administrator password, session secret or password hash. It authenticates only through the backend.
 
+## Ticket and support system
+
+Der Desktop-Bereich **Support & Hilfe** erstellt private Tickets über `/api/tickets`. Da die normale App kein Benutzerkonto erfordert, sind Tickets an eine einzelne Installation gebunden. Electron erstellt dafür eine zufällige Installationskennung und ein Bearer-Geheimnis, verschlüsselt dieses mit Windows DPAPI und sendet es ausschließlich aus dem Hauptprozess. In D1 wird nur der SHA-256-Hash gespeichert. Der Zugriff von einer zweiten Installation ist bewusst nicht möglich.
+
+Administratoren und Supportmitarbeiter verwenden im **Ticket-Postfach** die vorhandenen Berechtigungen `support.read` und `support.manage`. Serverrouten liefern interne Nachrichten nur an authentifizierte Supportmitarbeiter aus; Benutzer-Endpunkte schließen sie ausdrücklich aus. Antworten und Ticketaktivitäten aktualisieren Ungelesen-Zähler, die die laufende App regelmäßig abfragt.
+
+Die Migration `migrations/0003_ticket_system.sql` erstellt Tabellen für Installationsidentitäten, Tickets, Nachrichten und Anhänge. Vor Entwicklung oder Tests lokal mit `npm run db:migrate:local` anwenden; vor dem Pages-Functions-Deployment mit `npm run db:migrate:remote` auf die Produktionsdatenbank anwenden. Die App führt Migrationen und Deployments nicht automatisch aus.
+
+Anhänge werden als D1-BLOBs gespeichert und auf drei Dateien, je 512 KB und insgesamt 1 MB pro Nachricht begrenzt. Erlaubt sind PNG, JPEG, WebP, Klartext und PDF. Ausführbare Dateien, HTML und SVG werden abgelehnt. Pro Installation sind zehn neue Tickets pro Tag und pro IP-Hash zwanzig neue Tickets pro Tag möglich.
+
 ## Telemetry and privacy
 
 The desktop app sends pseudonymous session events only after the user enables **Optionale Nutzungsstatistiken senden** in Settings. It queues events locally while offline and sends a deletion request when consent is revoked. Pages Functions validate identifiers, deduplicate event IDs, limit event volume per installation, cap server-calculated heartbeat duration and expose aggregate statistics only.

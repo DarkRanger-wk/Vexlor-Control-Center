@@ -31,15 +31,6 @@ jobs:
           git reset --hard origin/main
           if ($LASTEXITCODE -ne 0) { throw 'Could not sync with main.' }
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Read exact project version
         id: version
         shell: pwsh
@@ -47,36 +38,55 @@ jobs:
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           "version=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Check whether this version is already released
+        id: release-status
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v${{ steps.version.outputs.version }}"
+          $releaseInfo = gh release view "$tag" --json tagName 2>&1
+          $releaseStatus = $LASTEXITCODE
+          if ($releaseStatus -eq 0) {
+            "should_publish=false" >> $env:GITHUB_OUTPUT
+            Write-Host "Release $tag already exists; skipping publication."
+          } elseif (($releaseInfo -join "`n") -match '(?i)(HTTP 404|not found)') {
+            "should_publish=true" >> $env:GITHUB_OUTPUT
+          } else {
+            throw "Could not check release $tag`: $($releaseInfo -join "`n")"
+          }
+
+      - name: Set up Node.js
+        if: steps.release-status.outputs.should_publish == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.release-status.outputs.should_publish == 'true'
+        run: npm ci
+
       - name: Build Windows installer
+        if: steps.release-status.outputs.should_publish == 'true'
         run: npm run dist
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Create release tag
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          git config user.name "github-actions[bot]"
-          if ($LASTEXITCODE -ne 0) { throw 'Could not configure git author.' }
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ($LASTEXITCODE -ne 0) { throw 'Could not configure git email.' }
-          git tag -a "v${{ steps.version.outputs.version }}" -m "Vexlor Control Center v${{ steps.version.outputs.version }}"
-          if ($LASTEXITCODE -ne 0) { throw 'Could not create the release tag.' }
-          git push origin "refs/tags/v${{ steps.version.outputs.version }}"
-          if ($LASTEXITCODE -ne 0) { throw 'Could not push the release tag.' }
-
       - name: Deutsche GitHub-Veröffentlichung erstellen
+        if: steps.release-status.outputs.should_publish == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
           $sourceCommit = '${{ github.sha }}'
-          $previousTag = git describe --tags --abbrev=0 $sourceCommit
-          if ($LASTEXITCODE -ne 0) { throw 'Das vorherige Versionskennzeichen konnte nicht ermittelt werden.' }
+          $tag = "v${{ steps.version.outputs.version }}"
+          $previousTag = git tag --list 'v*' --sort=-version:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
+          if (-not $previousTag) { throw 'Das vorherige Versionskennzeichen konnte nicht ermittelt werden.' }
           $changes = git log --no-merges --format='- %s' "$previousTag..$sourceCommit"
           if ($LASTEXITCODE -ne 0) { throw 'Die Änderungen für die Versionshinweise konnten nicht ermittelt werden.' }
           if (-not $changes) { $changes = '- Fehlerbehebungen und Verbesserungen' }
           $notes = "Änderungen in Version ${{ steps.version.outputs.version }}:`n`n$changes"
-          gh release create "v${{ steps.version.outputs.version }}" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --verify-tag --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --notes "$notes"
+          gh release create "$tag" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --target "$sourceCommit" --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --notes "$notes"
           if ($LASTEXITCODE -ne 0) { throw 'Die GitHub-Veröffentlichung ist fehlgeschlagen.' }

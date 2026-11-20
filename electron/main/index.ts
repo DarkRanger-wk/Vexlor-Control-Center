@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, shell } from 'electron'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { extname, isAbsolute, join } from 'node:path'
@@ -7,6 +7,7 @@ import type { AppSettings, CustomizationColors, CustomizationSettings, Customiza
 import { assertNoArgs, assertRecord, assertString, assertTrustedRenderer } from '../security/validation'
 import { readNetworkSnapshot, readProcessList, readSystemSnapshot } from './monitor'
 import { localStorage } from './storage'
+import { getTicketIdentity, hasTicketIdentity } from './ticket-identity'
 import { checkLatestRelease, downloadLatestInstaller, openGitHubRelease } from './updates'
 import {
   captureScreenshotDisplay,
@@ -33,6 +34,7 @@ const customizationColorKeys = ['accent', 'background', 'sidebar', 'card', 'menu
 const customizationIcons = new Set(['dashboard', 'monitor', 'library', 'performance', 'network', 'tools', 'arcade', 'target', 'clock', 'crown', 'bolt', 'launch', 'screenshot', 'copy', 'save', 'zoomIn', 'zoomOut', 'settings', 'refresh', 'cpu', 'memory', 'windows', 'spark', 'arrow'])
 const customizationNavigation = new Set(['Dashboard', 'System Monitor', 'Spielebibliothek', 'Performance', 'Network Center', 'Gaming Tools', 'Vexlor Arcade', 'Screenshot Tool', 'Customization', 'Einstellungen', 'Über Vexlor'])
 const adminApiBaseUrl = 'https://infos-vcc.pages.dev'
+const ticketApiBaseUrl = 'https://infos-vcc.pages.dev'
 let adminSessionCookie: string | null = null
 
 function register(
@@ -199,12 +201,18 @@ function validateCustomization(value: unknown): CustomizationSettings {
 
 function validateSettings(value: unknown): Partial<AppSettings> {
   assertRecord(value)
-  const allowed = new Set(['accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'customization', 'notifications', 'autoCheckUpdates', 'telemetryEnabled', 'screenshotShortcut', 'gamingProfileName', 'gameSoundEnabled', 'gameSoundVolume', 'dashboardElements'])
+  const allowed = new Set(['username', 'accent', 'theme', 'animations', 'compactSidebar', 'backgroundData', 'customization', 'notifications', 'autoCheckUpdates', 'telemetryEnabled', 'screenshotShortcut', 'gamingProfileName', 'gameSoundEnabled', 'gameSoundVolume', 'dashboardElements'])
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) throw new Error(`Unbekannte Einstellung: ${key}.`)
   }
 
   const settings: Partial<AppSettings> = {}
+  if ('username' in value) {
+    assertString(value.username, 'Nutzername', 24)
+    const username = value.username.trim()
+    if (!username || /[\u0000-\u001f\u007f]/.test(username)) throw new Error('Bitte gib einen gültigen Nutzernamen ein.')
+    settings.username = username
+  }
   if ('customization' in value) settings.customization = validateCustomization(value.customization)
   if ('accent' in value) {
     if (typeof value.accent !== 'string' || !colorPattern.test(value.accent)) throw new Error('Ungültige Akzentfarbe.')
@@ -327,6 +335,50 @@ async function requestAdminApi(value: unknown): Promise<{ status: number; body: 
     adminSessionCookie = null
   }
 
+  return { status: response.status, body: responseBody }
+}
+
+async function requestTicketApi(value: unknown): Promise<{ status: number; body: Record<string, unknown> }> {
+  assertRecord(value)
+  assertString(value.path, 'Ticket-API-Pfad', 2048)
+  const method = value.method ?? 'GET'
+  if (method !== 'GET' && method !== 'POST') throw new Error('Ungültige Ticket-API-Methode.')
+  if (value.body !== undefined) assertString(value.body, 'Ticket-API-Daten', 2 * 1024 * 1024)
+  if (method === 'GET' && value.body !== undefined) throw new Error('GET-Anfragen dürfen keinen Inhalt haben.')
+
+  const url = new URL(value.path, ticketApiBaseUrl)
+  if (url.origin !== ticketApiBaseUrl
+    || (url.pathname !== '/api/tickets' && !url.pathname.startsWith('/api/tickets/'))) {
+    throw new Error('Nicht autorisierter Ticket-API-Pfad.')
+  }
+  if (!hasTicketIdentity() && method === 'GET' && url.pathname === '/api/tickets') {
+    return { status: 200, body: { ok: true, tickets: [], unreadCount: 0 } }
+  }
+
+  const identity = getTicketIdentity()
+  const headers = new Headers({
+    Accept: 'application/json',
+    Authorization: `Bearer ${identity.token}`,
+    'X-VCC-Install-Id': identity.installId,
+    'X-VCC-Display-Name': localStorage.getSettings().username || 'Lokaler Nutzer',
+  })
+  if (value.body !== undefined) headers.set('Content-Type', 'application/json')
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: value.body,
+    signal: AbortSignal.timeout(30000),
+  })
+  let responseBody: unknown
+  try {
+    responseBody = await response.json()
+  } catch {
+    responseBody = { error: 'Die Antwort des Ticketdienstes ist ungültig.' }
+  }
+  if (typeof responseBody !== 'object' || responseBody === null || Array.isArray(responseBody)) {
+    responseBody = { error: 'Die Antwort des Ticketdienstes ist ungültig.' }
+  }
+  assertRecord(responseBody)
   return { status: response.status, body: responseBody }
 }
 
@@ -480,6 +532,15 @@ function registerIpcHandlers(): void {
   register('admin:request', (value, ...args) => {
     assertNoArgs(args)
     return requestAdminApi(value)
+  })
+  register('tickets:has-identity', (...args) => {
+    assertNoArgs(args)
+    if (!safeStorage.isEncryptionAvailable()) return false
+    return hasTicketIdentity()
+  })
+  register('tickets:request', (value, ...args) => {
+    assertNoArgs(args)
+    return requestTicketApi(value)
   })
   register('timer-widget:update-state', (value) => updateTimerWidgetState(value))
   register('external:open-email', async (...args) => {

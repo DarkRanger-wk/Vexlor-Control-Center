@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { TimerWidgetAction, VccApi } from '../../src/types/app'
 
 const vccApi: VccApi = {
+  hasTicketIdentity: () => ipcRenderer.invoke('tickets:has-identity'),
+  ticketRequest: (path, options) => ipcRenderer.invoke('tickets:request', { path, ...options }),
   adminRequest: (path, options) => ipcRenderer.invoke('admin:request', { path, ...options }),
   getSystemSnapshot: () => ipcRenderer.invoke('system:get-snapshot'),
   listProcesses: () => ipcRenderer.invoke('system:get-processes'),

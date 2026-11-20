@@ -458,6 +458,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .empty-state .primary-button { margin-top: 18px; }
 .modal-backdrop { position: fixed; z-index: 15; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(4, 8, 15, .76); backdrop-filter: blur(6px); }
 .game-modal { width: min(540px, 100%); max-height: min(90vh, 770px); overflow: auto; padding: 20px; box-shadow: 0 25px 90px rgba(0, 0, 0, .55); }
+.username-modal { width: min(430px, 100%); padding: 25px; box-shadow: 0 25px 90px rgba(0, 0, 0, .55); }
+.username-modal h2 { margin-top: 6px; color: #edf3fd; font: 600 22px/1.2 'Space Grotesk', sans-serif; }
+.username-description { margin-top: 9px; color: #8390a5; font-size: 11px; line-height: 1.6; }
+.username-modal .form-label { margin-top: 19px; }
 .modal-heading { display: flex; justify-content: space-between; margin-bottom: 17px; }
 .close-button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: #93a2b8; font-size: 18px; }
 .form-label { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; color: #9cacc1; font-size: 9px; }

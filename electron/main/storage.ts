@@ -12,6 +12,7 @@ interface LocalData {
 }
 
 const defaultSettings: AppSettings = {
+  username: '',
   accent: '#428bff',
   theme: 'navy',
   animations: true,
@@ -261,6 +262,17 @@ export const localStorage = {
 
   saveSettings(settings: Partial<AppSettings>): AppSettings {
     const data = readData()
+    if ('username' in settings) {
+      if (data.settings.username.trim()) {
+        throw new Error('Der Nutzername wurde bereits festgelegt und kann nicht geändert werden.')
+      }
+      const username = settings.username?.trim() ?? ''
+      if (!username) throw new Error('Bitte gib einen Nutzernamen ein.')
+      data.settings = { ...data.settings, ...settings, username }
+      writeData(data)
+      return data.settings
+    }
+
     data.settings = { ...data.settings, ...settings }
     writeData(data)
     return data.settings

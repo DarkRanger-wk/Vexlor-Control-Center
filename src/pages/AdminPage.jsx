@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
+import AdminTicketMailbox from './AdminTicketMailbox.jsx'
 import '../styles/admin.css'
 
 async function adminRequest(path, options = {}) {
@@ -24,6 +25,7 @@ const sections = [
   ['updates', 'Update-Verwaltung', 'refresh'],
   ['stats', 'Statistik-Zentrale', 'performance'],
   ['support', 'Support-Verwaltung', 'network'],
+  ['ticket-mailbox', 'Ticket-Postfach', 'network'],
   ['features', 'Feature-Verwaltung', 'tools'],
   ['roles', 'Rollen und Berechtigungen', 'crown'],
   ['system', 'Systemverwaltung', 'cpu'],
@@ -267,7 +269,8 @@ export default function AdminPage({ notifyError, notifyInfo }) {
       {section === 'users' && <UsersSection users={users} reload={() => adminRequest('/api/admin/users').then((body) => setUsers(body.users ?? []))} />}
       {(section === 'codes' || section === 'secret') && <CodesSection codes={codes} secret={section === 'secret'} />}
       {section === 'support' && <SupportSection requests={support} />}
-      {!['dashboard', 'stats', 'users', 'codes', 'secret', 'support'].includes(section) && <GenericAdminSection section={section} />}
+      {section === 'ticket-mailbox' && <AdminTicketMailbox notifyInfo={notifyInfo} />}
+      {!['dashboard', 'stats', 'users', 'codes', 'secret', 'support', 'ticket-mailbox'].includes(section) && <GenericAdminSection section={section} />}
     </main>
   </div>
 }

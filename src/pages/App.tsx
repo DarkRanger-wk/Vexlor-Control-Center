@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import packageJson from '../../package.json'
 import { Icon } from '../components/Icon'
 import { Sidebar } from '../components/Sidebar'
@@ -14,8 +14,10 @@ import ArcadePage from './ArcadePage.jsx'
 import CustomizationPage from './CustomizationPage.jsx'
 import AdminPage from './AdminPage.jsx'
 import RedeemCodePage from './RedeemCodePage.jsx'
+import SupportPage from './SupportPage.jsx'
 
 const defaultSettings: AppSettings = {
+  username: '',
   accent: '#428bff',
   theme: 'navy',
   animations: true,
@@ -47,6 +49,11 @@ const idleTimerWidgetState: TimerWidgetState = {
 export default function App() {
   const [page, setPage] = useState('Dashboard')
   const [settings, setSettings] = useState(defaultSettings)
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0)
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
+  const [usernamePromptDismissed, setUsernamePromptDismissed] = useState(false)
+  const [usernameDraft, setUsernameDraft] = useState('')
+  const [savingUsername, setSavingUsername] = useState(false)
   const [availableUpdate, setAvailableUpdate] = useState<{ tag: string; hasInstaller: boolean } | null>(null)
   const [installingUpdate, setInstallingUpdate] = useState(false)
   const [checkingUpdates, setCheckingUpdates] = useState(false)
@@ -67,6 +74,7 @@ export default function App() {
       if (!active) return
       settingsRef.current = saved
       setSettings(saved)
+      setSettingsLoaded(true)
     }).catch((error: unknown) => {
       if (active) notifyError(error instanceof Error ? error.message : 'Einstellungen konnten nicht geladen werden.')
     })
@@ -106,6 +114,37 @@ export default function App() {
       window.clearInterval(interval)
     }
   }, [settings.autoCheckUpdates, settings.notifications, notifyError, notifyInfo])
+
+  useEffect(() => {
+    if (!settingsLoaded) return
+    let active = true
+    let previousUnreadCount: number | null = null
+    const pollSupport = async () => {
+      try {
+        if (!await window.vcc.hasTicketIdentity()) return
+        const result = await window.vcc.ticketRequest('/api/tickets')
+        if (result.status < 200 || result.status >= 300) {
+          throw new Error(typeof result.body.error === 'string' ? result.body.error : 'Support-Benachrichtigungen konnten nicht geladen werden.')
+        }
+        if (!active) return
+        const unreadCount = Number(result.body.unreadCount) || 0
+        setSupportUnreadCount(unreadCount)
+        if (previousUnreadCount !== null && unreadCount > previousUnreadCount) {
+          notifyInfo('Dein Ticket hat eine neue Antwort vom Support-Team.')
+        }
+        previousUnreadCount = unreadCount
+      } catch (error) {
+        if (active) console.warn('Support-Benachrichtigungen konnten nicht geladen werden:', error)
+      }
+    }
+
+    void pollSupport()
+    const interval = window.setInterval(() => void pollSupport(), 60 * 1000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [settingsLoaded, notifyInfo])
 
   useEffect(() => {
     const unsubscribeCaptured = window.vcc.onScreenshotCaptured((image) => {
@@ -283,6 +322,19 @@ export default function App() {
     }
   }, [notifyError])
 
+  const saveUsername = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const username = usernameDraft.trim()
+    if (!username || savingUsername) return
+
+    setSavingUsername(true)
+    try {
+      if (await updateSettings({ username })) setUsernamePromptDismissed(true)
+    } finally {
+      setSavingUsername(false)
+    }
+  }
+
   const selectPage = (nextPage: string) => {
     setPage(nextPage)
     setToast(null)
@@ -358,6 +410,9 @@ export default function App() {
     case 'Screenshot Tool':
       pageContent = <ScreenshotPage initialImage={hotkeyScreenshot} notifyError={notifyError} notifyInfo={notifyInfo} />
       break
+    case 'Support & Hilfe':
+      pageContent = <SupportPage username={settings.username} notifyInfo={notifyInfo} />
+      break
     case 'Customization':
       pageContent = <CustomizationPage settings={settings} updateSettings={updateSettings} notifyError={notifyError} notifyInfo={notifyInfo} />
       break
@@ -383,6 +438,8 @@ export default function App() {
     <Sidebar
       activeItem={page}
       compact={settings.customization.values.layout.compactSidebar}
+      username={settings.username}
+      supportUnreadCount={supportUnreadCount}
       iconOverrides={settings.customization.values.layout.sidebarIcons}
       onSelect={selectPage}
     />
@@ -401,6 +458,30 @@ export default function App() {
       </header>
       <div className="page-scroll" key={page}>{pageContent}<footer className="page-footer"><span>VEXLOR CONTROL CENTER</span><span>LOKAL. TRANSPARENT. DEIN PC.</span></footer></div>
     </main>
+    {settingsLoaded && !settings.username.trim() && !usernamePromptDismissed && <div className="modal-backdrop username-backdrop">
+      <section className="username-modal panel" role="dialog" aria-modal="true" aria-labelledby="username-dialog-title">
+        <div className="section-kicker">ERSTER START</div>
+        <h2 id="username-dialog-title">Willkommen bei Vexlor</h2>
+        <p className="username-description">Wie sollen wir dich nennen? Dein Nutzername wird nur auf diesem PC gespeichert und kann später nicht geändert werden.</p>
+        <form onSubmit={(event) => void saveUsername(event)}>
+          <label className="form-label">Nutzername
+            <input
+              autoFocus
+              autoComplete="nickname"
+              maxLength={24}
+              value={usernameDraft}
+              onChange={(event) => setUsernameDraft(event.target.value)}
+              placeholder="z. B. Alex"
+              required
+            />
+          </label>
+          <div className="modal-actions">
+            <button type="button" className="subtle-button" disabled={savingUsername} onClick={() => setUsernamePromptDismissed(true)}>Später</button>
+            <button type="submit" className="primary-button" disabled={!usernameDraft.trim() || savingUsername}>{savingUsername ? 'Wird gespeichert …' : 'Namen speichern'}</button>
+          </div>
+        </form>
+      </section>
+    </div>}
     {toast && <div className={`app-toast ${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}><span>{toast.kind === 'error' ? '!' : '✓'}</span><p>{toast.message}</p><button onClick={() => setToast(null)} aria-label="Meldung schließen"><Icon name="arrow" /></button></div>}
   </div>
 }
