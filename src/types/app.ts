@@ -9,7 +9,15 @@ export interface GameEntry {
   lastLaunchedAt: string | null
 }
 
-export type ArcadeGameId = 'space-shooter' | 'runner' | 'clicker' | 'puzzle'
+export type ArcadeGameId =
+  | 'space-shooter' | 'runner' | 'clicker' | 'puzzle'
+  | 'snake' | 'memory' | 'minesweeper' | 'tic-tac-toe'
+  | 'pong' | 'breakout' | 'flappy' | 'doodle-jump' | 'bubble-shooter' | 'neon-racer'
+  | 'whack-a-mole' | 'reaction-time' | 'aim-trainer' | 'stack-tower' | 'tetris'
+  | 'word-scramble' | 'word-guess' | 'lights-out' | 'sudoku' | 'sokoban' | 'maze-runner'
+  | 'tower-of-hanoi' | 'number-slide' | 'connect-four' | 'chess' | 'battleship'
+  | 'reversi' | 'checkers' | 'mastermind' | 'simon-says' | 'quick-math' | 'typing-speed'
+  | 'color-match' | 'rock-paper-scissors' | 'quiz-challenge' | 'geography-quiz' | 'flag-quiz'
 export type ArcadeAchievementId = 'first-flight' | 'score-500' | 'score-2000' | 'score-5000' | 'play-60'
 
 export interface ArcadeProfile {
@@ -39,6 +47,8 @@ export interface ArcadeProfile {
   }
   achievements: ArcadeAchievementId[]
   recentGames: ArcadeGameId[]
+  favorites: ArcadeGameId[]
+  gameRecords: Record<ArcadeGameId, { bestScore: number; roundsPlayed: number; wins: number }>
   soundVolume: number
 }
 

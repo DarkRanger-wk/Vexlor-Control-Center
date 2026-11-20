@@ -53,6 +53,7 @@ const probeScript = [
   '$gpus = @(Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name })',
   '[pscustomobject]@{processes=$processes; adapters=$adapters; networkStats=$networkStats; disks=$disks; gpus=$gpus} | ConvertTo-Json -Compress -Depth 4',
 ].join('; ')
+const encodedProbeScript = Buffer.from(probeScript, 'utf16le').toString('base64')
 
 let probePromise: Promise<ProbeResult> | undefined
 let probeAt = 0
@@ -74,8 +75,8 @@ async function getProbe(): Promise<ProbeResult> {
 
   probePromise = execFileAsync(
     'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-Command', probeScript],
-    { timeout: 10000, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
+    ['-NoProfile', '-NonInteractive', '-EncodedCommand', encodedProbeScript],
+    { timeout: 30000, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
   ).then(({ stdout }) => {
     const result = JSON.parse(stdout) as ProbeResult
     result.processes = normalizeArray(result.processes)
