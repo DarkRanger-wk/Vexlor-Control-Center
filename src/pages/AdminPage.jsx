@@ -18,7 +18,7 @@ async function adminRequest(path, options = {}) {
 
 const sections = [
   ['dashboard', 'Admin Dashboard', 'monitor'],
-  ['users', 'Benutzerverwaltung', 'library'],
+  ['users', 'App-Nutzer', 'library'],
   ['codes', 'Code-Verwaltung', 'screenshot'],
   ['announcements', 'Code-Ankündigungen', 'spark'],
   ['premium', 'Premium-Verwaltung', 'crown'],
@@ -45,6 +45,9 @@ export default function AdminPage({ notifyError, notifyInfo }) {
   const [section, setSection] = useState('dashboard')
   const [dashboard, setDashboard] = useState(null)
   const [users, setUsers] = useState([])
+  const [usersTotal, setUsersTotal] = useState(0)
+  const [usersPage, setUsersPage] = useState(0)
+  const [usersSearch, setUsersSearch] = useState('')
   const [codes, setCodes] = useState([])
   const [support, setSupport] = useState([])
 
@@ -60,18 +63,36 @@ export default function AdminPage({ notifyError, notifyInfo }) {
   useEffect(() => {
     if (!admin) return
     let active = true
+    let usersRefreshTimer
     setError('')
     if (section === 'dashboard' || section === 'stats') {
       adminRequest('/api/admin/dashboard').then((body) => { if (active) setDashboard(body) }).catch((caught) => { if (active) setError(caught.message) })
     } else if (section === 'users') {
-      adminRequest('/api/admin/users?limit=100').then((body) => { if (active) setUsers(body.users ?? []) }).catch((caught) => { if (active) setError(caught.message) })
+      const loadUsers = () => {
+        const params = new URLSearchParams({
+          limit: '100',
+          offset: String(usersPage * 100),
+          search: usersSearch,
+        })
+        adminRequest(`/api/admin/users?${params}`).then((body) => {
+          if (active) {
+            setUsers(body.users ?? [])
+            setUsersTotal(Number(body.total ?? 0))
+          }
+        }).catch((caught) => { if (active) setError(caught.message) })
+      }
+      loadUsers()
+      usersRefreshTimer = window.setInterval(loadUsers, 30_000)
     } else if (section === 'codes') {
       adminRequest('/api/admin/codes').then((body) => { if (active) setCodes(body.codes ?? []) }).catch((caught) => { if (active) setError(caught.message) })
     } else if (section === 'support') {
       adminRequest('/api/admin/support').then((body) => { if (active) setSupport(body.requests ?? []) }).catch((caught) => { if (active) setError(caught.message) })
     }
-    return () => { active = false }
-  }, [admin, section])
+    return () => {
+      active = false
+      if (usersRefreshTimer) window.clearInterval(usersRefreshTimer)
+    }
+  }, [admin, section, usersPage, usersSearch])
 
   const login = async (event) => {
     event.preventDefault()
@@ -147,19 +168,19 @@ export default function AdminPage({ notifyError, notifyInfo }) {
     </div>
   }
 
-  function UsersSection({ users, reload }) {
-    const [search, setSearch] = useState('')
-    const visibleUsers = users.filter((user) => `${user.display_name} ${user.email ?? ''} ${user.id}`.toLowerCase().includes(search.trim().toLowerCase()))
+  function UsersSection({ users, total, page, search, onPageChange, onSearchChange, reload }) {
     const act = async (id, action) => {
       if (!window.confirm(action === 'disable' ? 'Benutzerkonto wirklich deaktivieren?' : 'Diese Benutzeraktion ausführen?')) return
       await adminRequest('/api/admin/users', { method: 'POST', body: JSON.stringify({ id, action }) }).then(async () => {
         await reload()
       }).catch((error) => window.alert(error instanceof Error ? error.message : 'Benutzeraktion fehlgeschlagen.'))
     }
+    const pageCount = Math.max(1, Math.ceil(total / 100))
     return <div className="admin-table-card panel">
-      <div className="admin-table-heading"><h2>Registrierte Benutzer</h2><span>{visibleUsers.length} von {users.length} Einträgen</span></div>
-      <input className="admin-user-search" type="search" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Nach Benutzername oder ID suchen" aria-label="Benutzer suchen" />
-      {visibleUsers.length ? <div className="admin-table-wrap"><table><thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Letzte Aktivität</th><th>Aktion</th></tr></thead><tbody>{visibleUsers.map((user) => <tr key={user.id}><td><strong>{user.display_name}</strong><small>{user.id}</small></td><td>{user.role}</td><td><span className={`admin-status ${user.status}`}>{user.status}</span></td><td>{user.last_active_at ? new Date(user.last_active_at * 1000).toLocaleString('de-DE') : '—'}</td><td><div className="admin-row-actions"><button onClick={() => void act(user.id, user.status === 'blocked' ? 'unblock' : 'block')}>{user.status === 'blocked' ? 'Entsperren' : 'Sperren'}</button><button className="danger" onClick={() => void act(user.id, 'disable')}>Deaktivieren</button></div></td></tr>)}</tbody></table></div> : <p className="admin-empty">Keine Benutzer gefunden.</p>}
+      <div className="admin-table-heading"><h2>App-Nutzer</h2><span>{total} Namen · Online, wenn innerhalb der letzten 2 Minuten gemeldet</span></div>
+      <input className="admin-user-search" type="search" value={search} maxLength={100} onChange={(event) => onSearchChange(event.target.value)} placeholder="Nach Namen suchen" aria-label="App-Nutzer nach Namen suchen" />
+      {users.length ? <div className="admin-table-wrap"><table><thead><tr><th>Name</th><th>Anmeldestatus</th><th>Letzte Aktivität</th><th>Konto</th><th>Aktion</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td><strong>{user.display_name}</strong></td><td><span className={`admin-status ${user.online ? 'active' : 'disabled'}`}>{user.online ? 'Online' : 'Offline'}</span></td><td>{user.last_active_at ? new Date(user.last_active_at * 1000).toLocaleString('de-DE') : '—'}</td><td>{user.status === 'blocked' ? 'Gesperrt' : user.status === 'disabled' ? 'Deaktiviert' : 'Aktiv'}</td><td><div className="admin-row-actions"><button onClick={() => void act(user.id, user.status === 'blocked' ? 'unblock' : 'block')}>{user.status === 'blocked' ? 'Entsperren' : 'Sperren'}</button><button className="danger" onClick={() => void act(user.id, 'disable')}>Deaktivieren</button></div></td></tr>)}</tbody></table></div> : <p className="admin-empty">Keine App-Nutzer gefunden.</p>}
+      <div className="admin-user-pagination"><span>Seite {page + 1} von {pageCount}</span><div><button type="button" disabled={page === 0} onClick={() => onPageChange(page - 1)}>Zurück</button><button type="button" disabled={page + 1 >= pageCount} onClick={() => onPageChange(page + 1)}>Weiter</button></div></div>
     </div>
   }
 
@@ -240,7 +261,21 @@ export default function AdminPage({ notifyError, notifyInfo }) {
       <header className="admin-main-header"><div><span className="section-kicker">ADMINISTRATION</span><h1>{sections.find(([id]) => id === section)?.[1] ?? 'Admin Dashboard'}</h1></div><span className="admin-secure-badge"><i /> SERVERGEPRÜFT</span></header>
       {error && <div className="admin-error" role="alert">{error}</div>}
       {(section === 'dashboard' || section === 'stats') && <AdminDashboard stats={stats} dashboard={dashboard} />}
-      {section === 'users' && <UsersSection users={users} reload={() => adminRequest('/api/admin/users?limit=100').then((body) => setUsers(body.users ?? []))} />}
+      {section === 'users' && <UsersSection
+        users={users}
+        total={usersTotal}
+        page={usersPage}
+        search={usersSearch}
+        onSearchChange={(search) => { setUsersSearch(search); setUsersPage(0) }}
+        onPageChange={setUsersPage}
+        reload={() => {
+          const params = new URLSearchParams({ limit: '100', offset: String(usersPage * 100), search: usersSearch })
+          return adminRequest(`/api/admin/users?${params}`).then((body) => {
+            setUsers(body.users ?? [])
+            setUsersTotal(Number(body.total ?? 0))
+          })
+        }}
+      />}
       {section === 'codes' && <CodesSection codes={codes} request={adminRequest} reload={() => adminRequest('/api/admin/codes').then((body) => setCodes(body.codes ?? []))} />}
       {section === 'announcements' && <AnnouncementsSection request={adminRequest} />}
       {section === 'roles' && <RolesSection request={adminRequest} currentAdminId={admin.id} />}

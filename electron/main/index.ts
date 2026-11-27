@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, shell } from 'electron'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -35,7 +35,9 @@ const customizationIcons = new Set(['dashboard', 'monitor', 'library', 'performa
 const customizationNavigation = new Set(['Dashboard', 'System Monitor', 'Spielebibliothek', 'Performance', 'Network Center', 'Gaming Tools', 'Vexlor Arcade', 'Screenshot Tool', 'Customization', 'Einstellungen', 'Über Vexlor'])
 const adminApiBaseUrl = 'https://infos-vcc.pages.dev'
 const ticketApiBaseUrl = 'https://infos-vcc.pages.dev'
+const adminSessionFile = join(app.getPath('userData'), 'admin-session.bin')
 let adminSessionCookie: string | null = null
+let userPresenceTimer: NodeJS.Timeout | null = null
 
 function register(
   channel: string,
@@ -273,6 +275,49 @@ function validateSettings(value: unknown): Partial<AppSettings> {
   return settings
 }
 
+function clearAdminSession(): void {
+  adminSessionCookie = null
+  rmSync(adminSessionFile, { force: true })
+}
+
+function persistAdminSession(): void {
+  if (!adminSessionCookie) throw new Error('Die Admin-Sitzung kann nicht gespeichert werden.')
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Der sichere Windows-Speicher ist nicht verfügbar. Die Admin-Anmeldung kann nicht dauerhaft gespeichert werden.')
+  }
+  mkdirSync(app.getPath('userData'), { recursive: true })
+  const content = JSON.stringify({ version: app.getVersion(), cookie: adminSessionCookie })
+  writeFileSync(adminSessionFile, safeStorage.encryptString(content), { mode: 0o600 })
+}
+
+function restoreAdminSession(): boolean {
+  if (!existsSync(adminSessionFile)) return false
+  if (!safeStorage.isEncryptionAvailable()) {
+    console.warn('Der sichere Windows-Speicher ist nicht verfügbar; die gespeicherte Admin-Sitzung wurde nicht geladen.')
+    return false
+  }
+
+  try {
+    const stored: unknown = JSON.parse(safeStorage.decryptString(readFileSync(adminSessionFile)))
+    if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) {
+      throw new Error('Die gespeicherte Admin-Sitzung hat ein ungültiges Format.')
+    }
+    const session = stored as { version?: unknown; cookie?: unknown }
+    if (typeof session.version !== 'string'
+      || typeof session.cookie !== 'string'
+      || !/^vcc_admin_session=[A-Za-z0-9_-]+$/.test(session.cookie)) {
+      throw new Error('Die gespeicherte Admin-Sitzung ist ungültig.')
+    }
+
+    adminSessionCookie = session.cookie
+    return session.version !== app.getVersion()
+  } catch (error) {
+    clearAdminSession()
+    console.error('Die gespeicherte Admin-Sitzung konnte nicht geladen werden:', error)
+    return false
+  }
+}
+
 async function chooseImage(title: string): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     title,
@@ -329,10 +374,11 @@ async function requestAdminApi(value: unknown): Promise<{ status: number; body: 
     const match = cookie?.match(/(?:^|,\s*)vcc_admin_session=([^;,\s]+)/)
     if (!match) throw new Error('Der Admin-Server hat keine gültige Sitzung ausgegeben.')
     adminSessionCookie = `vcc_admin_session=${match[1]}`
+    persistAdminSession()
   } else if (response.status === 401) {
-    adminSessionCookie = null
+    clearAdminSession()
   } else if (url.pathname === '/api/admin/auth/me' && method === 'POST' && response.ok) {
-    adminSessionCookie = null
+    clearAdminSession()
   }
 
   return { status: response.status, body: responseBody }
@@ -349,7 +395,7 @@ async function requestTicketApi(value: unknown): Promise<{ status: number; body:
   const url = new URL(value.path, ticketApiBaseUrl)
   if (url.origin !== ticketApiBaseUrl
     || (url.pathname !== '/api/tickets' && !url.pathname.startsWith('/api/tickets/')
-      && !['/api/codes/redeem', '/api/codes/rewards', '/api/arcade/profile'].includes(url.pathname))) {
+      && !['/api/codes/redeem', '/api/codes/rewards', '/api/arcade/profile', '/api/users/presence'].includes(url.pathname))) {
     throw new Error('Nicht autorisierter Installations-API-Pfad.')
   }
   if (!hasTicketIdentity() && method === 'GET' && url.pathname === '/api/tickets') {
@@ -381,6 +427,47 @@ async function requestTicketApi(value: unknown): Promise<{ status: number; body:
   }
   assertRecord(responseBody)
   return { status: response.status, body: responseBody }
+}
+
+async function reportUserPresence(): Promise<void> {
+  const displayName = localStorage.getSettings().username.trim()
+  if (!displayName) return
+
+  const result = await requestTicketApi({
+    path: '/api/users/presence',
+    method: 'POST',
+    body: '{}',
+  })
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(typeof result.body.error === 'string' ? result.body.error : 'Der Online-Status konnte nicht übermittelt werden.')
+  }
+}
+
+function startUserPresence(): void {
+  const send = () => {
+    void reportUserPresence().catch((error: unknown) => {
+      console.warn('Der App-Online-Status konnte nicht aktualisiert werden:', error)
+    })
+  }
+  send()
+  userPresenceTimer = setInterval(send, 60_000)
+}
+
+async function revokeAdminSessionForUpdate(): Promise<void> {
+  if (!adminSessionCookie) {
+    clearAdminSession()
+    return
+  }
+
+  try {
+    const result = await requestAdminApi({ path: '/api/admin/auth/me', method: 'POST' })
+    if (result.status < 200 || result.status >= 300) {
+      throw new Error(typeof result.body.error === 'string' ? result.body.error : 'Die Admin-Sitzung wurde nicht widerrufen.')
+    }
+  } catch (error) {
+    clearAdminSession()
+    console.warn('Die lokale Admin-Sitzung wurde vor dem Update gelöscht; der serverseitige Widerruf ist fehlgeschlagen:', error)
+  }
 }
 
 function registerIpcHandlers(): void {
@@ -453,6 +540,11 @@ function registerIpcHandlers(): void {
     const settings = validateSettings(value)
     const savedSettings = localStorage.saveSettings(settings)
     if ('telemetryEnabled' in settings) setTelemetryEnabled(savedSettings.telemetryEnabled)
+    if ('username' in settings) {
+      void reportUserPresence().catch((error: unknown) => {
+        console.warn('Der App-Name konnte nicht beim Vexlor-Dienst registriert werden:', error)
+      })
+    }
     return savedSettings
   })
   register('settings:autostart', (value) => {
@@ -487,7 +579,7 @@ function registerIpcHandlers(): void {
   })
   register('updates:download-installer', (...args) => {
     assertNoArgs(args)
-    return downloadLatestInstaller()
+    return downloadLatestInstaller(revokeAdminSessionForUpdate)
   })
   register('screenshot:list-displays', (...args) => {
     assertNoArgs(args)
@@ -605,13 +697,16 @@ function createWindow(): void {
   else void window.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const sessionFromPreviousVersion = restoreAdminSession()
+  if (sessionFromPreviousVersion) await revokeAdminSessionForUpdate()
   Menu.setApplicationMenu(null)
   registerIpcHandlers()
   registerScreenshotOverlayEvents()
   registerTimerWidgetEvents()
   registerTelemetryLifecycle(localStorage.getSettings().telemetryEnabled)
   createWindow()
+  startUserPresence()
   initializeScreenshotShortcut()
 
   app.on('activate', () => {
@@ -621,4 +716,9 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  if (userPresenceTimer) clearInterval(userPresenceTimer)
+  userPresenceTimer = null
 })

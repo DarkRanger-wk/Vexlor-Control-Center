@@ -6,7 +6,6 @@ export async function onRequestGet({ request, env }) {
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
   const now = Math.floor(Date.now() / 1000);
-  const day = now - 86400;
   const [
     users,
     premium,
@@ -25,7 +24,7 @@ export async function onRequestGet({ request, env }) {
     env.DB.prepare(`SELECT COUNT(*) AS count FROM redeem_codes WHERE status = 'active' AND (expires_at IS NULL OR expires_at >= ?) AND current_redemptions < max_redemptions`).bind(now).first(),
     env.DB.prepare('SELECT COUNT(*) AS count FROM code_redemptions').first(),
     env.DB.prepare('SELECT COUNT(*) AS count FROM sessions').first(),
-    env.DB.prepare('SELECT COUNT(*) AS count FROM sessions WHERE ended_at IS NULL AND last_heartbeat_at >= ?').bind(day).first(),
+    env.DB.prepare('SELECT COUNT(*) AS count FROM users WHERE last_active_at >= ?').bind(now - 120).first(),
     env.DB.prepare('SELECT COUNT(*) AS count FROM installations').first(),
     env.DB.prepare('SELECT id, action, resource_type, resource_id, result, created_at FROM admin_audit_logs ORDER BY created_at DESC LIMIT 10').all(),
     env.DB.prepare('SELECT id, event_type, created_at FROM security_events ORDER BY created_at DESC LIMIT 10').all(),

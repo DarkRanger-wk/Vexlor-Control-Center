@@ -77,7 +77,7 @@ export async function checkLatestRelease(): Promise<UpdateInfo> {
   }
 }
 
-export async function downloadLatestInstaller(): Promise<UpdateInfo> {
+export async function downloadLatestInstaller(beforeInstall: () => Promise<void>): Promise<UpdateInfo> {
   const latest = await checkLatestRelease()
   if (!latest.updateAvailable || !latest.latestVersion || !latest.downloadUrl) return latest
   const installer = installerDownloads.get(latest.latestVersion)
@@ -130,6 +130,8 @@ export async function downloadLatestInstaller(): Promise<UpdateInfo> {
     } finally {
       await installerFile.close()
     }
+
+    await beforeInstall()
 
     await new Promise<void>((resolve, reject) => {
       const installDirectory = dirname(process.execPath)

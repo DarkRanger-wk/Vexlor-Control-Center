@@ -99,6 +99,10 @@
 .admin-row-actions { flex-wrap: wrap; }
 .admin-user-search { width: min(360px, 100%); min-height: 36px; margin-bottom: 12px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 7px; outline: none; background: var(--bg); color: var(--text); font: inherit; }
 .admin-user-search:focus { border-color: var(--blue); }
+.admin-user-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 10px; }
+.admin-user-pagination > div { display: flex; gap: 6px; }
+.admin-user-pagination button { min-height: 30px; padding: 0 10px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text); font-size: 9px; cursor: pointer; }
+.admin-user-pagination button:disabled { opacity: .45; cursor: not-allowed; }
 @media (max-width: 760px) {
   .admin-form-grid { grid-template-columns: 1fr; }
   .admin-form-wide { grid-column: auto; }

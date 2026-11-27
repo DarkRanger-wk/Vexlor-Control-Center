@@ -10,27 +10,42 @@ export async function onRequestGet({ request, env }) {
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
   const url = new URL(request.url);
-  const search = String(url.searchParams.get('search') ?? '').trim();
+  const search = String(url.searchParams.get('search') ?? '').trim().slice(0, 100);
   const status = String(url.searchParams.get('status') ?? '');
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? 25)));
-  let query = 'SELECT id, display_name, email, role, status, premium_until, created_at, last_active_at FROM users';
+  const requestedLimit = Number(url.searchParams.get('limit') ?? 25);
+  const requestedOffset = Number(url.searchParams.get('offset') ?? 0);
+  const limit = Number.isSafeInteger(requestedLimit) ? Math.min(100, Math.max(1, requestedLimit)) : 25;
+  const offset = Number.isSafeInteger(requestedOffset) ? Math.min(1_000_000, Math.max(0, requestedOffset)) : 0;
   const binds = [];
   const clauses = [];
   if (search) {
-    clauses.push('(display_name LIKE ? OR email LIKE ? OR id LIKE ?)');
+    clauses.push('display_name LIKE ?');
     const term = `%${search}%`;
-    binds.push(term, term, term);
+    binds.push(term);
   }
   if (validStatus(status)) {
     clauses.push('status = ?');
     binds.push(status);
   }
-  if (clauses.length) query += ` WHERE ${clauses.join(' AND ')}`;
-  query += ' ORDER BY created_at DESC LIMIT ?';
-  binds.push(limit);
+  const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
+  const [count, users] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS total FROM users${where}`).bind(...binds).first(),
+    env.DB.prepare(`
+      SELECT id, display_name, role, status, premium_until, created_at, last_active_at,
+        CASE WHEN last_active_at >= ? THEN 1 ELSE 0 END AS online
+      FROM users${where}
+      ORDER BY online DESC, last_active_at DESC, created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(Math.floor(Date.now() / 1000) - 120, ...binds, limit, offset).all(),
+  ]);
 
-  const users = await env.DB.prepare(query).bind(...binds).all();
-  return Response.json({ ok: true, users: users.results ?? [] });
+  return Response.json({
+    ok: true,
+    users: (users.results ?? []).map((user) => ({ ...user, online: Number(user.online) === 1 })),
+    total: Number(count?.total ?? 0),
+    limit,
+    offset,
+  });
 }
 
 export async function onRequestPost({ request, env }) {

@@ -473,7 +473,7 @@ export default function App() {
       <section className="username-modal panel" role="dialog" aria-modal="true" aria-labelledby="username-dialog-title">
         <div className="section-kicker">ERSTER START</div>
         <h2 id="username-dialog-title">Willkommen bei Vexlor</h2>
-        <p className="username-description">Wie sollen wir dich nennen? Dein Nutzername wird nur auf diesem PC gespeichert und kann später nicht geändert werden.</p>
+        <p className="username-description">Wie sollen wir dich nennen? Dein Anzeigename wird bei App-Starts an Vexlor übermittelt und im geschützten Admin-Bereich mit deinem Online-Status angezeigt. Du kannst den Namen später nicht ändern.</p>
         <form onSubmit={(event) => void saveUsername(event)}>
           <label className="form-label">Nutzername
             <input

@@ -85,4 +85,6 @@ Anhänge werden als D1-BLOBs gespeichert und auf drei Dateien, je 512 KB und ins
 
 New desktop app installations have **Optionale Nutzungsstatistiken senden** enabled by default. Users can disable it in Settings; saved preferences on existing installations are preserved. The app queues pseudonymous session events locally while offline and sends a deletion request when telemetry is disabled. Pages Functions validate identifiers, deduplicate event IDs, limit event volume per installation, cap server-calculated heartbeat duration and expose aggregate statistics only.
 
+The app's saved display name and a presence timestamp are sent separately from optional telemetry using the authenticated installation identity. The admin user list shows these names and marks an installation online when its last presence heartbeat is no older than two minutes. Disabling telemetry does not disable presence; deleting local app data or removing the installation identity stops future authenticated heartbeats.
+
 The public website intentionally omits the private street address shown in the desktop app's local imprint. Replace it with a business/public mailing address before publishing if the legal imprint requires one. The legal pages must be reviewed before public release.

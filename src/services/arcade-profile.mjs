@@ -14,6 +14,15 @@ export const ARCADE_ACHIEVEMENTS = [
   { id: 'score-2000', title: 'Fortgeschritten', description: 'Erreiche 2.000 Punkte in einer Runde.', icon: 'bolt' },
   { id: 'score-5000', title: 'Profi', description: 'Erreiche 5.000 Punkte in einer Runde.', icon: 'crown' },
   { id: 'play-60', title: 'Arcade-Fan', description: 'Spiele insgesamt 60 Minuten.', icon: 'clock' },
+  ...ARCADE_GAMES.map((gameId) => {
+    const gameName = gameId.split('-').map((part) => `${part[0].toUpperCase()}${part.slice(1)}`).join(' ')
+    return {
+      id: `game-${gameId}`,
+      title: `Erste Runde: ${gameName}`,
+      description: `Starte deine erste Runde in ${gameName}.`,
+      icon: 'crown',
+    }
+  }),
 ]
 
 const achievementIds = new Set(ARCADE_ACHIEVEMENTS.map((achievement) => achievement.id))
@@ -173,6 +182,9 @@ export function applyArcadeAchievements(profile) {
   if (profile.highScore >= 2000) unlocked.add('score-2000')
   if (profile.highScore >= 5000) unlocked.add('score-5000')
   if (profile.totalPlayTimeSeconds >= 3600) unlocked.add('play-60')
+  for (const gameId of ARCADE_GAMES) {
+    if (profile.gameRecords?.[gameId]?.roundsPlayed > 0) unlocked.add(`game-${gameId}`)
+  }
   return { ...profile, achievements: [...unlocked] }
 }
 
@@ -245,7 +257,7 @@ export function recordPuzzleProgress(profile, state) {
   }
   const bestTile = Math.max(0, ...state.board)
   const puzzle = profile.puzzle
-  return {
+  return applyArcadeAchievements({
     ...profile,
     puzzle: {
       ...puzzle,
@@ -267,7 +279,7 @@ export function recordPuzzleProgress(profile, state) {
         wins: profile.gameRecords.puzzle.wins + Number(state.won && !puzzle.won),
       },
     },
-  }
+  })
 }
 
 export function loadArcadeProfile(storage = window.localStorage) {

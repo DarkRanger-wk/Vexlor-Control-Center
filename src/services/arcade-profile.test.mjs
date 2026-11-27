@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  ARCADE_ACHIEVEMENTS,
   ARCADE_GAMES,
   addArcadePlayTime,
   applyArcadeAchievements,
@@ -47,6 +48,25 @@ test('achievements unlock from score, playtime, and first launch', () => {
   assert.deepEqual(new Set(applyArcadeAchievements(profile).achievements), new Set([
     'first-flight', 'score-500', 'score-2000', 'score-5000', 'play-60',
   ]))
+})
+
+test('game-specific first-round achievements unlock independently and persist', () => {
+  assert.equal(ARCADE_ACHIEVEMENTS.length, ARCADE_GAMES.length + 5)
+  const started = beginArcadeRound(createArcadeProfile(), 'snake')
+  assert.ok(started.achievements.includes('game-snake'))
+  assert.ok(!started.achievements.includes('game-memory'))
+
+  const storage = createStorage()
+  saveArcadeProfile(started, storage)
+  assert.ok(loadArcadeProfile(storage).achievements.includes('game-snake'))
+
+  const legacy = validateArcadeProfile({
+    ...createArcadeProfile(),
+    achievements: ['first-flight'],
+    gameRecords: undefined,
+  })
+  assert.ok(!legacy.achievements.includes('game-snake'))
+  assert.ok(ARCADE_GAMES.every((gameId) => legacy.gameRecords[gameId]))
 })
 
 test('round results preserve the personal record and update lifetime statistics', () => {

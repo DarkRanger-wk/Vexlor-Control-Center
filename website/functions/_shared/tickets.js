@@ -73,9 +73,11 @@ export async function requireTicketIdentity(request, env, allowCreate = false) {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  await env.DB.prepare('UPDATE ticket_identities SET last_seen_at = ? WHERE install_id = ?')
-    .bind(now, installId).run();
-  return { identity: { installId, displayName: identity.display_name } };
+  const rawName = request.headers.get('x-vcc-display-name') ?? '';
+  const displayName = rawName.trim().replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 24) || identity.display_name;
+  await env.DB.prepare('UPDATE ticket_identities SET display_name = ?, last_seen_at = ? WHERE install_id = ?')
+    .bind(displayName, now, installId).run();
+  return { identity: { installId, displayName } };
 }
 
 export function isTicketId(value) {

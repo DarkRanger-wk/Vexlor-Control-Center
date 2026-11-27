@@ -294,6 +294,9 @@
 @media (prefers-reduced-motion: reduce) {
   .arcade-game-card { transition: none; }
   .achievement-progress span { transition: none; }
+  .arcade-extra-arena::after,
+  .arcade-clicker-layout::after,
+  .arcade-puzzle-layout::after { animation: none; }
 }
 
 .arcade-mini-game-tag {
@@ -409,11 +412,22 @@
 
 .arcade-runner-controls button svg { width: 12px; height: 12px; transform: rotate(45deg); }
 
+.arcade-clicker-page { --scene-accent: #bb9aff; --scene-glow: rgba(145, 94, 255, .17); }
+.arcade-puzzle-page { --scene-accent: #6de1b0; --scene-glow: rgba(49, 201, 145, .16); }
+.arcade-clicker-layout,
+.arcade-puzzle-layout {
+  position: relative;
+  isolation: isolate;
+}
+
 .arcade-clicker-layout {
   display: grid;
   grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
   gap: 14px;
 }
+
+.arcade-clicker-layout > *,
+.arcade-puzzle-layout > * { position: relative; z-index: 2; }
 
 .arcade-clicker-core-panel,
 .arcade-clicker-upgrades,
@@ -423,7 +437,7 @@
   padding: 20px;
   border: 1px solid rgba(153, 178, 215, .1);
   border-radius: 10px;
-  background: linear-gradient(145deg, rgba(16, 25, 41, .98), rgba(10, 17, 29, .98));
+  background: linear-gradient(145deg, rgba(16, 25, 41, .88), rgba(10, 17, 29, .84));
 }
 
 .arcade-clicker-core-panel {
@@ -434,7 +448,7 @@
   overflow: hidden;
   background:
     radial-gradient(ellipse at 50% 45%, rgba(114, 75, 204, .15), transparent 49%),
-    linear-gradient(145deg, rgba(16, 25, 41, .98), rgba(10, 17, 29, .98));
+    linear-gradient(145deg, rgba(16, 25, 41, .88), rgba(10, 17, 29, .84));
   text-align: center;
 }
 
@@ -580,6 +594,10 @@
 .arcade-favorite-toggle:hover, .arcade-favorite-toggle.active { border-color: rgba(255, 213, 107, .35); color: #ffd76f; }
 
 .arcade-extra-page { outline: none; }
+.arcade-extra-page.blue { --scene-accent: #65baff; --scene-glow: rgba(57, 127, 255, .18); }
+.arcade-extra-page.cyan { --scene-accent: #55e0e6; --scene-glow: rgba(48, 203, 221, .17); }
+.arcade-extra-page.green { --scene-accent: #69e2ac; --scene-glow: rgba(49, 201, 145, .16); }
+.arcade-extra-page.violet { --scene-accent: #b19aff; --scene-glow: rgba(137, 95, 255, .17); }
 .arcade-extra-toolbar-actions { display: flex; align-items: center; gap: 7px; }
 .arcade-extra-control { min-height: 31px; padding: 0 9px; border: 1px solid rgba(132, 156, 190, .15); border-radius: 6px; background: rgba(17, 28, 44, .72); color: #9aabc1; font-size: 8px; cursor: pointer; white-space: nowrap; }
 .arcade-extra-control:hover { border-color: rgba(73, 157, 255, .35); color: #d8eaff; }
@@ -587,11 +605,30 @@
 .arcade-extra-hud > div { display: flex; flex-direction: column; gap: 3px; min-width: 55px; }
 .arcade-extra-hud > div > span { color: #61738d; font: 500 7px var(--mono); letter-spacing: .8px; }
 .arcade-extra-hud > div > strong { color: #dceaff; font: 500 13px var(--mono); }
-.arcade-extra-arena { position: relative; display: grid; min-height: min(58vh, 500px); place-items: center; overflow: hidden; border: 1px solid rgba(90, 156, 232, .2); border-radius: 0 0 9px 9px; background: radial-gradient(ellipse at center, rgba(20, 42, 60, .4), #070d18 72%); box-shadow: 0 14px 38px rgba(0, 0, 0, .22); }
+.arcade-extra-arena { position: relative; display: grid; min-height: min(58vh, 500px); place-items: center; overflow: hidden; border: 1px solid rgba(90, 156, 232, .2); border-radius: 0 0 9px 9px; background: linear-gradient(155deg, #091a31, #070d18 74%); box-shadow: 0 14px 38px rgba(0, 0, 0, .22); }
+.arcade-extra-arena::before,
+.arcade-clicker-layout::before,
+.arcade-puzzle-layout::before { position: absolute; inset: 0; z-index: 0; background:
+  radial-gradient(1px 1px at 8% 17%, rgba(218, 241, 255, .9) 99%, transparent),
+  radial-gradient(1.5px 1.5px at 22% 72%, rgba(114, 196, 255, .75) 99%, transparent),
+  radial-gradient(1px 1px at 39% 29%, rgba(230, 245, 255, .85) 99%, transparent),
+  radial-gradient(1.5px 1.5px at 57% 83%, rgba(151, 219, 255, .8) 99%, transparent),
+  radial-gradient(1px 1px at 73% 16%, rgba(229, 244, 255, .9) 99%, transparent),
+  radial-gradient(1px 1px at 91% 61%, rgba(174, 218, 255, .8) 99%, transparent),
+  radial-gradient(ellipse at 75% 30%, var(--scene-glow, rgba(60, 135, 255, .16)), transparent 48%),
+  linear-gradient(155deg, #091a31, #070d18 74%);
+  content: ''; pointer-events: none; }
+.arcade-extra-arena::after,
+.arcade-clicker-layout::after,
+.arcade-puzzle-layout::after { position: absolute; top: 21%; right: clamp(24px, 8vw, 94px); z-index: 1; width: 43px; height: 58px; clip-path: polygon(50% 0, 66% 38%, 100% 68%, 70% 61%, 66% 100%, 50% 78%, 34% 100%, 30% 61%, 0 68%, 34% 38%); background: linear-gradient(180deg, #e6fbff 0 13%, var(--scene-accent, #65baff) 14% 78%, #173c70 79%); filter: drop-shadow(0 0 7px var(--scene-accent, #65baff)) drop-shadow(0 0 18px var(--scene-accent, #65baff)); opacity: .8; animation: arcade-scene-drift 5s ease-in-out infinite; content: ''; pointer-events: none; }
+.arcade-clicker-layout::after,
+.arcade-puzzle-layout::after { opacity: .38; }
+.arcade-extra-arena > :not(.arcade-game-overlay) { position: relative; z-index: 2; }
 .arcade-extra-arena.memory { background: radial-gradient(ellipse at center, rgba(79, 48, 127, .22), #080d19 72%); }
 .arcade-extra-arena.minesweeper { background: radial-gradient(ellipse at center, rgba(32, 115, 119, .2), #080d19 72%); }
 .arcade-extra-arena.tic-tac-toe { background: radial-gradient(ellipse at center, rgba(41, 81, 146, .2), #080d19 72%); }
-.arcade-extra-arena .arcade-game-overlay { z-index: 2; }
+.arcade-extra-arena .arcade-game-overlay { z-index: 3; }
+@keyframes arcade-scene-drift { 0%, 100% { transform: translate3d(0, 0, 0) rotate(-5deg); } 50% { transform: translate3d(-5px, 8px, 0) rotate(4deg); } }
 .arcade-snake-board { position: relative; display: grid; width: min(76vw, 560px); aspect-ratio: 4 / 3; grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(12, 1fr); overflow: hidden; border: 1px solid rgba(89, 205, 164, .24); border-radius: 9px; background-color: #0a191b; background-image: linear-gradient(rgba(82, 164, 142, .08) 1px, transparent 1px), linear-gradient(90deg, rgba(82, 164, 142, .08) 1px, transparent 1px); background-size: 6.25% 8.333%; box-shadow: 0 0 36px rgba(45, 205, 156, .07); }
 .arcade-snake-cell { z-index: 1; width: 76%; height: 76%; place-self: center; border-radius: 3px; }
 .arcade-snake-cell.head { background: #d7ffe6; box-shadow: 0 0 11px #53e9a1; }

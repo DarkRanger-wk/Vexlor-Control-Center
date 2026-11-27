@@ -18,7 +18,9 @@ export type ArcadeGameId =
   | 'tower-of-hanoi' | 'number-slide' | 'connect-four' | 'chess' | 'battleship'
   | 'reversi' | 'checkers' | 'mastermind' | 'simon-says' | 'quick-math' | 'typing-speed'
   | 'color-match' | 'rock-paper-scissors' | 'quiz-challenge' | 'geography-quiz' | 'flag-quiz'
-export type ArcadeAchievementId = 'first-flight' | 'score-500' | 'score-2000' | 'score-5000' | 'play-60'
+export type ArcadeAchievementId =
+  | 'first-flight' | 'score-500' | 'score-2000' | 'score-5000' | 'play-60'
+  | `game-${ArcadeGameId}`
 
 export interface ArcadeProfile {
   highScore: number

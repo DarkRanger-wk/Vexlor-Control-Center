@@ -431,6 +431,11 @@ function AchievementCard({ achievement, unlocked, profile }) {
   if (achievement.id === 'first-flight') {
     progress = profile.roundsPlayed ? 1 : 0
     progressLabel = profile.roundsPlayed ? 'Freigeschaltet' : 'Starte eine Runde'
+  } else if (achievement.id.startsWith('game-')) {
+    const gameId = achievement.id.slice('game-'.length)
+    const roundsPlayed = profile.gameRecords[gameId]?.roundsPlayed ?? 0
+    progress = Math.min(1, roundsPlayed)
+    progressLabel = roundsPlayed ? 'Freigeschaltet' : 'Starte das Spiel'
   } else if (achievement.id.startsWith('score-')) {
     const target = Number(achievement.id.split('-')[1])
     progress = Math.min(1, profile.highScore / target)

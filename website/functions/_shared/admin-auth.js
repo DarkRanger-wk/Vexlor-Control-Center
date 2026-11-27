@@ -2,8 +2,7 @@ import { argon2idAsync } from '@noble/hashes/argon2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 
 const SESSION_COOKIE = 'vcc_admin_session';
-const SESSION_TTL_SECONDS = 8 * 60 * 60;
-const IDLE_TTL_SECONDS = 30 * 60;
+const SESSION_TTL_SECONDS = 10 * 365 * 24 * 60 * 60;
 const HASH_REGEX = /^argon2id\$v=19\$m=(\d+),t=(\d+),p=(\d+)\$([A-Za-z0-9+/=]+)\$([A-Za-z0-9+/=]+)$/;
 
 function utf8(value) {
@@ -151,7 +150,7 @@ export async function requireAdmin(request, env, db, permission = '*') {
     WHERE s.token_hash = ? AND s.revoked_at IS NULL
   `).bind(tokenHash).first();
   if (!session) return { error: 'Ungültige Sitzung.', status: 401 };
-  if (session.expires_at <= now || session.last_activity_at + IDLE_TTL_SECONDS <= now) {
+  if (session.expires_at <= now) {
     await db.prepare('UPDATE admin_sessions SET revoked_at = ? WHERE id = ?').bind(now, session.id).run();
     return { error: 'Sitzung abgelaufen.', status: 401 };
   }
