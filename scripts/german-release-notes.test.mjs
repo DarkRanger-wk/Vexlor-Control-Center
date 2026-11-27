@@ -12,18 +12,16 @@ test('translates known English commit subjects into detailed German notes', () =
   )
 })
 
-test('keeps unknown commit subjects German by using their translated category', () => {
+test('describes the 0.2.5 release in detail', () => {
   assert.equal(
-    createGermanReleaseNotes('0.2.5', ['feat(settings): add color controls']),
-    'Änderungen in Version 0.2.5:\n\n- Neue Funktionen und Verbesserungen',
+    createGermanReleaseNotes('0.2.5', ['feat: spielhalle und admin-bereich erweitern']),
+    'Änderungen in Version 0.2.5:\n\n- Spielhalle um passende Szenen und spielbezogene Erfolge erweitert; der Admin-Bereich zeigt App-Nutzer mit Online-Status und behält Anmeldungen bis zu einem Update.',
   )
 })
 
-test('uses a German fallback when a release has no commit subjects', () => {
-  assert.equal(
-    createGermanReleaseNotes('0.2.5', []),
-    'Änderungen in Version 0.2.5:\n\n- Fehlerbehebungen und Verbesserungen',
-  )
+test('rejects unknown subjects and empty releases instead of publishing generic notes', () => {
+  assert.throws(() => createGermanReleaseNotes('0.2.5', ['feat(settings): add color controls']), /deutsche Versionshinweis-Übersetzung/)
+  assert.throws(() => createGermanReleaseNotes('0.2.5', []), /keine konkreten Änderungen/)
 })
 
 test('rejects invalid release versions', () => {

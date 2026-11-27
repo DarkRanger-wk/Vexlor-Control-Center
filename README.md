@@ -46,6 +46,6 @@ Ticket-, Codebelohnungs- und Arcade-Profildaten werden in der unter `website/` k
 
 ## Update setup
 
-Every push to `main` builds the Windows NSIS installer for the exact version in `package.json` and publishes that GitHub Release if its tag does not exist. Release notes are generated in German; unknown commit titles are summarized by their translated category. Update the version before pushing a release. GitHub Actions must have permission to write repository contents.
+Every push to `main` builds the Windows NSIS installer for the exact version in `package.json` and publishes that GitHub Release if its tag does not exist. Each release commit needs a detailed German translation in `scripts/german-release-notes.mjs`; the workflow stops rather than publishing generic notes when a translation is missing. Update the version before pushing a release. GitHub Actions must have permission to write repository contents.
 
 The in-app updater installs into the directory of the currently running executable. This keeps the executable path stable for existing taskbar pins; settings and other local data remain in the per-user application data folder.
