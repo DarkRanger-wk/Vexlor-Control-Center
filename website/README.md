@@ -83,6 +83,6 @@ Anhänge werden als D1-BLOBs gespeichert und auf drei Dateien, je 512 KB und ins
 
 ## Telemetry and privacy
 
-The desktop app sends pseudonymous session events only after the user enables **Optionale Nutzungsstatistiken senden** in Settings. It queues events locally while offline and sends a deletion request when consent is revoked. Pages Functions validate identifiers, deduplicate event IDs, limit event volume per installation, cap server-calculated heartbeat duration and expose aggregate statistics only.
+New desktop app installations have **Optionale Nutzungsstatistiken senden** enabled by default. Users can disable it in Settings; saved preferences on existing installations are preserved. The app queues pseudonymous session events locally while offline and sends a deletion request when telemetry is disabled. Pages Functions validate identifiers, deduplicate event IDs, limit event volume per installation, cap server-calculated heartbeat duration and expose aggregate statistics only.
 
 The public website intentionally omits the private street address shown in the desktop app's local imprint. Replace it with a business/public mailing address before publishing if the legal imprint requires one. The legal pages must be reviewed before public release.

@@ -27,6 +27,29 @@ function initializeRevealAnimations() {
   targets.forEach((element) => observer.observe(element));
 }
 
+function initializePreviewClock() {
+  const dateNode = document.querySelector('[data-preview-date]');
+  const timeNode = document.querySelector('[data-preview-clock]');
+  if (!dateNode || !timeNode) return;
+
+  const updateClock = () => {
+    const now = new Date();
+    dateNode.textContent = new Intl.DateTimeFormat('de-DE', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+    }).format(now).replace(/\./g, '').toUpperCase();
+    timeNode.textContent = new Intl.DateTimeFormat('de-DE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(now);
+  };
+
+  updateClock();
+  window.setInterval(updateClock, 30_000);
+}
+
 function formatNumber(value) {
   return Number(value).toLocaleString('de-DE');
 }
@@ -311,6 +334,7 @@ document.querySelectorAll('[data-period]').forEach((button) => {
 });
 
 initializeRevealAnimations();
+initializePreviewClock();
 void loadLatestRelease();
 void loadReleaseHistory();
 void loadStats();

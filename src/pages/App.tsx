@@ -27,7 +27,7 @@ const defaultSettings: AppSettings = {
   notifications: true,
   launchAtLogin: false,
   autoCheckUpdates: true,
-  telemetryEnabled: false,
+  telemetryEnabled: true,
   screenshotShortcut: 'Ctrl+Shift+S',
   gamingProfileName: 'Lokales Gaming-Profil',
   gameSoundEnabled: true,
