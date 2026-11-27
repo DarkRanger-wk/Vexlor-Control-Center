@@ -49,13 +49,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Could not list existing releases.' }
           if ($releases.tagName -contains $tag) {
             "should_publish=false" >> $env:GITHUB_OUTPUT
-            Write-Host "Release $tag already exists; skipping publication."
+            $subject = git log -1 --format='%s' $env:GITHUB_SHA
+            if ($subject -like 'changelog:*') {
+              "update_notes=true" >> $env:GITHUB_OUTPUT
+              Write-Host "Release $tag already exists; its German notes will be updated."
+            } else {
+              "update_notes=false" >> $env:GITHUB_OUTPUT
+              Write-Host "Release $tag already exists; skipping publication."
+            }
           } else {
             "should_publish=true" >> $env:GITHUB_OUTPUT
+            "update_notes=false" >> $env:GITHUB_OUTPUT
           }
 
       - name: Set up Node.js
-        if: steps.release-status.outputs.should_publish == 'true'
+        if: steps.release-status.outputs.should_publish == 'true' || steps.release-status.outputs.update_notes == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -71,8 +79,8 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Deutsche GitHub-Veröffentlichung erstellen
-        if: steps.release-status.outputs.should_publish == 'true'
+      - name: Deutsche Versionshinweise erstellen oder aktualisieren
+        if: steps.release-status.outputs.should_publish == 'true' || steps.release-status.outputs.update_notes == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -82,10 +90,15 @@ jobs:
           $tag = "v${{ steps.version.outputs.version }}"
           $previousTag = git tag --list 'v*' --sort=-version:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
           if (-not $previousTag) { throw 'Das vorherige Versionskennzeichen konnte nicht ermittelt werden.' }
-          $changes = @(git log --no-merges --format='%s' "$previousTag..$sourceCommit")
+          $subjects = @(git log --no-merges --format='%s' "$previousTag..$sourceCommit" | Where-Object { $_ -notmatch '^changelog:' })
           if ($LASTEXITCODE -ne 0) { throw 'Die Änderungen für die Versionshinweise konnten nicht ermittelt werden.' }
-          $changes = @($changes | ForEach-Object { '- ' + ($_ -replace '^[a-z]+:\s*', '') })
-          if (-not $changes) { $changes = @('- Fehlerbehebungen und Verbesserungen') }
-          $notes = @("Änderungen in Version ${{ steps.version.outputs.version }}:"; ""; $changes) -join "`n"
-          gh release create "$tag" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --target "$sourceCommit" --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --notes "$notes"
-          if ($LASTEXITCODE -ne 0) { throw 'Die GitHub-Veröffentlichung ist fehlgeschlagen.' }
+          $arguments = @('scripts/german-release-notes.mjs', '${{ steps.version.outputs.version }}') + $subjects
+          $notes = (& node @arguments | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Die deutschen Versionshinweise konnten nicht erstellt werden.' }
+          if ('${{ steps.release-status.outputs.should_publish }}' -eq 'true') {
+            gh release create "$tag" "release/Vexlor-Control-Center-${{ steps.version.outputs.version }}-x64.exe" --target "$sourceCommit" --title "Vexlor Control Center ${{ steps.version.outputs.version }}" --notes "$notes"
+            if ($LASTEXITCODE -ne 0) { throw 'Die GitHub-Veröffentlichung ist fehlgeschlagen.' }
+          } else {
+            gh release edit "$tag" --notes "$notes"
+            if ($LASTEXITCODE -ne 0) { throw 'Die deutschen Versionshinweise konnten nicht aktualisiert werden.' }
+          }
